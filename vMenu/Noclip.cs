@@ -26,8 +26,8 @@ namespace vMenuClient
 
         private readonly List<float> speedMultipliers = new()
         {
-            0.05f,
-            0.2f
+            0.1f,
+            0.3f
         };
 
         public NoClip()
@@ -218,7 +218,7 @@ namespace vMenuClient
                 }
                 float moveSpeed = speedMultipliers[Math.Max(0, Math.Min(MovingSpeed, speedMultipliers.Count - 1))];
                 moveSpeed = moveSpeed / (1f / GetFrameTime()) * 60;
-                newPos = GetOffsetFromEntityInWorldCoords(noclipEntity, 0f, yoff * (moveSpeed + 0.3f), zoff * (moveSpeed + 0.3f));
+                newPos = GetOffsetFromEntityInWorldCoords(noclipEntity, 0f, yoff * moveSpeed, zoff * moveSpeed);
 
                 var heading = GetEntityHeading(noclipEntity);
                 SetEntityVelocity(noclipEntity, 0f, 0f, 0f);
