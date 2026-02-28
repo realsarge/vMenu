@@ -248,8 +248,8 @@ namespace vMenuClient
 
         public static bool MiscLocationBlips
         {
-            get { return GetSettingsBool("miscLocationBlips"); }
-            set { SetSavedSettingsBool("miscLocationBlips", value); }
+            get { return true; }
+            set { SetSavedSettingsBool("miscLocationBlips", true); }
         }
 
         public static bool MiscShowPlayerBlips

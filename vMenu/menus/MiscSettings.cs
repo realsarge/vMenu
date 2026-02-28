@@ -36,7 +36,7 @@ namespace vMenuClient.menus
         public bool LockCameraX { get; private set; } = false;
         public bool LockCameraY { get; private set; } = false;
         public bool MPPedPreviews { get; private set; } = UserDefaults.MPPedPreviews;
-        public bool ShowLocationBlips { get; private set; } = UserDefaults.MiscLocationBlips;
+        public bool ShowLocationBlips { get; private set; } = true;
         public bool ShowPlayerBlips { get; private set; } = UserDefaults.MiscShowPlayerBlips;
         public bool MiscShowOverheadNames { get; private set; } = true;
         public bool ShowVehicleModelDimensions { get; private set; } = false;
@@ -187,7 +187,6 @@ namespace vMenuClient.menus
             var timeCycles = new MenuListItem("TM", timeCycleModifiersListData, MathUtil.Clamp(LastTimeCycleModifierIndex, 0, Math.Max(0, timeCycleModifiersListData.Count - 1)), "Select a timecycle modifier and enable the checkbox above.");
             var timeCycleIntensity = new MenuSliderItem("Timecycle Modifier Intensity", "Set the timecycle modifier intensity.", 0, 20, LastTimeCycleModifierStrength, true);
 
-            var locationBlips = new MenuCheckboxItem("Location Blips", "Shows blips on the map for some common locations.", ShowLocationBlips);
             var playerBlips = new MenuCheckboxItem("Show Player Blips", "Shows blips on the map for all players. ~y~Note for when the server is using OneSync Infinity: this won't work for players that are too far away.", ShowPlayerBlips);
             var respawnDefaultCharacter = new MenuCheckboxItem("Respawn As Default MP Character", "If you enable this, then you will (re)spawn as your default saved MP character. Note the server owner can globally disable this option. To set your default character, go to one of your saved MP Characters and click the 'Set As Default Character' button.", MiscRespawnDefaultCharacter);
             var restorePlayerAppearance = new MenuCheckboxItem("Restore Player Appearance", "Restore your player's skin whenever you respawn after being dead. Re-joining a server will not restore your previous skin.", RestorePlayerAppearance);
@@ -195,6 +194,7 @@ namespace vMenuClient.menus
 
             MenuController.AddSubmenu(menu, connectionSubmenu);
             MenuController.BindMenuItem(menu, connectionSubmenu, connectionSubmenuBtn);
+            ToggleBlips(true);
 
             keybindMenu.OnCheckboxChange += (sender, item, index, _checked) =>
             {
@@ -631,11 +631,6 @@ namespace vMenuClient.menus
             {
                 menu.AddMenuItem(thermalVision);
             }
-            if (IsAllowed(Permission.MSLocationBlips))
-            {
-                menu.AddMenuItem(locationBlips);
-                ToggleBlips(ShowLocationBlips);
-            }
             if (IsAllowed(Permission.MSPlayerBlips))
             {
                 menu.AddMenuItem(playerBlips);
@@ -750,11 +745,6 @@ namespace vMenuClient.menus
                 else if (item == mpPedPreview)
                 {
                     MPPedPreviews = _checked;
-                }
-                else if (item == locationBlips)
-                {
-                    ToggleBlips(_checked);
-                    ShowLocationBlips = _checked;
                 }
                 else if (item == playerBlips)
                 {
