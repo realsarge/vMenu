@@ -431,6 +431,7 @@ namespace vMenuClient
                     "voiceChatShowSpeaker" or
                     "voiceChatEnabled" or
                     "autoEquipParachuteWhenInPlane" or
+                    "miscShowOverheadNames" or
                     "miscRestorePlayerAppearance" or
                     "miscRestorePlayerWeapons" or
                     "miscRightAlignMenu" or

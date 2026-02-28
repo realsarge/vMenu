@@ -2269,6 +2269,20 @@ namespace vMenuClient.menus
 
             // Set the facial expression, or set it to 'normal' if it wasn't saved/set before.
             SetFacialIdleAnimOverride(Game.PlayerPed.Handle, currentCharacter.FacialExpression ?? facial_expressions[0], null);
+            UpdateSpawnedCharacterDescription();
+        }
+
+        private void UpdateSpawnedCharacterDescription()
+        {
+            var characterName = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(currentCharacter.Category))
+            {
+                var characterCategory = StorageManager.GetSavedMpCharacterCategoryData("mp_character_category_" + currentCharacter.Category);
+                characterName = characterCategory.Description ?? string.Empty;
+            }
+
+            TriggerServerEvent("vMenu:UpdateCharacterNames", Game.Player.ServerId, characterName);
         }
 
         /// <summary>

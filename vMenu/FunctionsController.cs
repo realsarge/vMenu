@@ -2395,12 +2395,8 @@ namespace vMenuClient
         {
             await Delay(500);
 
-            if (MainMenu.MiscSettingsMenu == null)
-            {
-                return;
-            }
-
-            if (!MainMenu.MiscSettingsMenu.MiscShowOverheadNames)
+            var enabled = MainMenu.MiscSettingsMenu?.MiscShowOverheadNames ?? UserDefaults.MiscShowOverheadNames;
+            if (!enabled)
             {
                 foreach (var gamerTag in gamerTags)
                 {
