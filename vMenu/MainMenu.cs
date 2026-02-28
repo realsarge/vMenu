@@ -727,7 +727,7 @@ namespace vMenuClient
             var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.")
             {
                 Label = ">>>",
-                LeftIcon = MenuItem.Icon.INV_PERSON
+                LeftIcon = MenuItem.Icon.CLOTHING
             };
             Menu.AddMenuItem(playerSubmenuBtn);
 
@@ -852,7 +852,7 @@ namespace vMenuClient
             var addonScriptsButton = new MenuItem("Scripts", "Open the menu for integrated external scripts.")
             {
                 Label = ">>>",
-                LeftIcon = MenuItem.Icon.STAR
+                LeftIcon = MenuItem.Icon.BARBER
             };
             AddMenu(Menu, addonScriptsMenu, addonScriptsButton);
 
@@ -863,7 +863,7 @@ namespace vMenuClient
                 var button = new MenuItem("Online Players", "All currently connected players.")
                 {
                     Label = ">>>",
-                    LeftIcon = MenuItem.Icon.GLOBE_BLUE
+                    LeftIcon = MenuItem.Icon.HEALTH_HEART
                 };
                 AddMenu(Menu, menu, button);
                 Menu.OnItemSelect += async (sender, item, index) =>
@@ -883,7 +883,7 @@ namespace vMenuClient
                 var button = new MenuItem("Recording Options", "In-game recording options.")
                 {
                     Label = ">>>",
-                    LeftIcon = MenuItem.Icon.ROCKSTAR
+                    LeftIcon = MenuItem.Icon.MICHAEL
                 };
                 AddMenu(Menu, menu, button);
             }
@@ -913,7 +913,7 @@ namespace vMenuClient
             var worldSubmenuBtn = new MenuItem("World Related Options", "Open this submenu for world related subcategories.")
             {
                 Label = ">>>",
-                LeftIcon = MenuItem.Icon.GLOBE_GREEN
+                LeftIcon = MenuItem.Icon.MAKEUP_BRUSH
             };
             Menu.AddMenuItem(worldSubmenuBtn);
 
