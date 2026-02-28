@@ -208,6 +208,7 @@ namespace vMenuClient
             ["Character Props"] = "Аксессуары",
             ["Character Tattoo Options"] = "Татуировки",
             ["Character Clothing Options"] = "Одежда персонажа",
+            ["Copy Outfit Code"] = "Скопировать код одежды",
             ["Set Character Category"] = "Задать категорию персонажа",
             ["Character Category"] = "Категория персонажа",
             ["Facial Expression"] = "Выражение лица",

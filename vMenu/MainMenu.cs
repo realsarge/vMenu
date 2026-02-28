@@ -312,6 +312,11 @@ namespace vMenuClient
                 }
             }), false);
 
+            RegisterCommand("fit", new Action<int, List<object>, string>((int source, List<object> args, string rawCommand) =>
+            {
+                MpPedCustomizationMenu?.HandleFitCommand(args);
+            }), false);
+
             if (GetCurrentResourceName() != "vMenu")
             {
                 MenuController.MainMenu = null;

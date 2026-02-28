@@ -20,6 +20,9 @@ namespace vMenuClient.menus
 {
     public class MpPedCustomization
     {
+        private const string FitClipboardKvp = "vmenu_fit_clipboard";
+        private static readonly int[] FitExportComponentIds = { 1, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+
         // Variables
         private Menu menu;
         public Menu createCharacterMenu = new("Create Character", "Create A New Character");
@@ -986,6 +989,7 @@ namespace vMenuClient.menus
             var saveButton = new MenuItem("Save Character", "Save your character.");
             var exitNoSave = new MenuItem("Exit Without Saving", "Are you sure? All unsaved work will be lost.");
             var faceExpressionList = new MenuListItem("Facial Expression", new List<string> { "Normal", "Happy", "Angry", "Aiming", "Injured", "Stressed", "Smug", "Sulk" }, 0, "Set a facial expression that will be used whenever your ped is idling.");
+            var copyFitCodeButton = new MenuItem("Copy Outfit Code", "Copies the current MP outfit code to the internal clipboard and prints it in chat.");
 
             inheritanceButton.Label = "→→→";
             appearanceButton.Label = "→→→";
@@ -1003,6 +1007,7 @@ namespace vMenuClient.menus
             createCharacterMenu.AddMenuItem(propsButton);
             createCharacterMenu.AddMenuItem(faceExpressionList);
             createCharacterMenu.AddMenuItem(categoryBtn);
+            createCharacterMenu.AddMenuItem(copyFitCodeButton);
             createCharacterMenu.AddMenuItem(saveButton);
             createCharacterMenu.AddMenuItem(exitNoSave);
 
@@ -2011,6 +2016,10 @@ namespace vMenuClient.menus
                         createCharacterMenu.GoBack();
                     }
                 }
+                else if (item == copyFitCodeButton)
+                {
+                    CopyCurrentFitCodeToClipboard();
+                }
                 else if (item == exitNoSave) // exit without saving
                 {
                     var confirm = false;
@@ -2222,6 +2231,34 @@ namespace vMenuClient.menus
             await SpawnSavedPed(restoreWeapons);
         }
 
+        internal void HandleFitCommand(List<object> args)
+        {
+            var input = args == null ? string.Empty : string.Concat(args.Where(a => a != null).Select(a => a.ToString())).Trim();
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                ApplyFitCodeFromClipboard();
+                return;
+            }
+
+            switch (input.ToLowerInvariant())
+            {
+                case "copy":
+                case "save":
+                    CopyCurrentFitCodeToClipboard();
+                    break;
+
+                case "clear":
+                case "delete":
+                    DeleteResourceKvp(FitClipboardKvp);
+                    Notify.Success("Fit clipboard cleared.");
+                    break;
+
+                default:
+                    ApplyFitCode(input);
+                    break;
+            }
+        }
+
         /// <summary>
         /// Spawns the ped from the data inside <see cref="currentCharacter"/>.
         /// Character data MUST be set BEFORE calling this function.
@@ -2283,6 +2320,154 @@ namespace vMenuClient.menus
             }
 
             TriggerServerEvent("vMenu:UpdateCharacterNames", Game.Player.ServerId, characterName);
+        }
+
+        private void CopyCurrentFitCodeToClipboard()
+        {
+            var pedHandle = Game.PlayerPed.Handle;
+            var modelHash = (uint)GetEntityModel(pedHandle);
+
+            if (!IsSupportedFitModel(modelHash))
+            {
+                Notify.Error("Fit codes only support freemode MP characters.");
+                return;
+            }
+
+            var fitCode = BuildCurrentFitCode(pedHandle);
+            SetResourceKvp(FitClipboardKvp, fitCode);
+            TriggerEvent("chat:addMessage", new
+            {
+                templateId = "ccChat",
+                multiline = false,
+                args = new[] { "#72e886", "fa-solid fa-shirt", "FIT", "", fitCode, "1.0" }
+            });
+            Notify.Success("Fit code copied and printed in chat.");
+        }
+
+        private void ApplyFitCodeFromClipboard()
+        {
+            var fitCode = GetResourceKvpString(FitClipboardKvp);
+            if (string.IsNullOrWhiteSpace(fitCode))
+            {
+                Notify.Error("No fit code saved yet. Use the menu item first or run /fit <code>.");
+                return;
+            }
+
+            ApplyFitCode(fitCode);
+        }
+
+        private void ApplyFitCode(string fitCode)
+        {
+            var currentModelHash = (uint)GetEntityModel(Game.PlayerPed.Handle);
+            if (!IsSupportedFitModel(currentModelHash))
+            {
+                Notify.Error("/fit can only be used on freemode MP characters.");
+                return;
+            }
+
+            if (!TryParseFitCode(fitCode, out var components, out var errorMessage))
+            {
+                Notify.Error(errorMessage);
+                return;
+            }
+
+            ApplyFitComponentsToPed(components, Game.PlayerPed.Handle);
+            UpdateCurrentCharacterFitState(components);
+            Notify.Success("Fit applied.");
+        }
+
+        private void UpdateCurrentCharacterFitState(Dictionary<int, KeyValuePair<int, int>> components)
+        {
+            if (currentCharacter.ModelHash == 0)
+            {
+                return;
+            }
+
+            if (currentCharacter.DrawableVariations.clothes == null)
+            {
+                currentCharacter.DrawableVariations.clothes = new Dictionary<int, KeyValuePair<int, int>>();
+            }
+            foreach (var entry in components)
+            {
+                currentCharacter.DrawableVariations.clothes[entry.Key] = entry.Value;
+                if (entry.Key == 2)
+                {
+                    currentCharacter.PedAppearance.hairStyle = entry.Value.Key;
+                    _hairSelection = entry.Value.Key;
+                }
+            }
+        }
+
+        private static bool IsSupportedFitModel(uint modelHash)
+        {
+            return modelHash == (uint)GetHashKey("mp_m_freemode_01") || modelHash == (uint)GetHashKey("mp_f_freemode_01");
+        }
+
+        private static string BuildCurrentFitCode(int handle)
+        {
+            return string.Join(",", FitExportComponentIds.Select(componentId =>
+                $"{componentId}:{GetPedDrawableVariation(handle, componentId)}:{GetPedTextureVariation(handle, componentId)}"));
+        }
+
+        private static bool TryParseFitCode(string fitCode, out Dictionary<int, KeyValuePair<int, int>> components, out string errorMessage)
+        {
+            components = new Dictionary<int, KeyValuePair<int, int>>();
+            errorMessage = "Invalid fit code.";
+
+            if (string.IsNullOrWhiteSpace(fitCode))
+            {
+                errorMessage = "Fit code is empty.";
+                return false;
+            }
+
+            foreach (var rawEntry in fitCode.Split(','))
+            {
+                var entry = rawEntry.Trim();
+                if (string.IsNullOrWhiteSpace(entry))
+                {
+                    continue;
+                }
+
+                var parts = entry.Split(':');
+                if (parts.Length != 3
+                    || !int.TryParse(parts[0], out var componentId)
+                    || !int.TryParse(parts[1], out var drawable)
+                    || !int.TryParse(parts[2], out var texture))
+                {
+                    errorMessage = $"Invalid fit entry: {entry}";
+                    return false;
+                }
+
+                if (componentId < 0 || componentId > 11)
+                {
+                    errorMessage = $"Unsupported component id: {componentId}";
+                    return false;
+                }
+
+                if (drawable < 0 || texture < 0)
+                {
+                    errorMessage = $"Drawable and texture must be non-negative: {entry}";
+                    return false;
+                }
+
+                components[componentId] = new KeyValuePair<int, int>(drawable, texture);
+            }
+
+            if (components.Count == 0)
+            {
+                errorMessage = "Fit code does not contain any clothing components.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void ApplyFitComponentsToPed(Dictionary<int, KeyValuePair<int, int>> components, int pedHandle)
+        {
+            foreach (var component in components.OrderBy(entry => entry.Key))
+            {
+                SetPedComponentVariation(pedHandle, component.Key, component.Value.Key, component.Value.Value, 0);
+            }
         }
 
         /// <summary>
@@ -3082,7 +3267,15 @@ namespace vMenuClient.menus
         {
             int handle = Game.PlayerPed.Handle;
 
-            // Drawables
+            if (character.DrawableVariations.clothes == null)
+            {
+                character.DrawableVariations.clothes = new Dictionary<int, KeyValuePair<int, int>>();
+            }
+            if (character.PropVariations.props == null)
+            {
+                character.PropVariations.props = new Dictionary<int, KeyValuePair<int, int>>();
+            }
+
             for (int i = 0; i < 12; i++)
             {
                 int drawable = GetPedDrawableVariation(handle, i);
