@@ -395,6 +395,21 @@ namespace vMenuClient
             ["~r~YES, DELETE"] = "~r~ДА, УДАЛИТЬ",
             ["NO, CANCEL"] = "НЕТ, ОТМЕНА",
             ["Are you sure?"] = "Вы уверены?",
+            ["Current Vehicle"] = "Текущий траспорт",
+            ["None"] = "Отсутствует",
+            ["No Ragdoll"] = "Отключить Ragdoll",
+            ["Never Wanted"] = "Отключить розыск",
+            ["Everyone Ignore Player"] = "НПС игнорируют игрока",
+            ["Heal Player"] = "Восстановить здоровье",
+            ["Set Armor Type"] = "Установить бронежилет",
+            ["Player Scenarios"] = "Сценарии для игрока",
+            ["Force Stop Scenario"] = "Остановить сценарий",
+            ["Create Category"] = "Создать категорию",
+            ["Uncategorized"] = "Без категории",
+            ["Rename Category"] = "Переименновать категорию",
+            ["Change Category Description"] = "Поменять описание категории",
+            ["Change Category Icon"] = "Поменять иконку категории",
+            ["Delete Category"] = "Удалить категорию",
         };
 
         internal static void LocalizeAllMenus()
