@@ -724,7 +724,11 @@ namespace vMenuClient
         /// </summary>
         private static void CreateSubmenus()
         {
-            var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.") { Label = ">>>" };
+            var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.")
+            {
+                Label = ">>>",
+                LeftIcon = MenuItem.Icon.INV_PERSON
+            };
             Menu.AddMenuItem(playerSubmenuBtn);
 
             if (IsAllowed(Permission.POMenu))
@@ -792,7 +796,11 @@ namespace vMenuClient
                 };
             }
 
-            var vehicleSubmenuBtn = new MenuItem("Vehicle Related Options", "Open this submenu for vehicle related subcategories.") { Label = ">>>" };
+            var vehicleSubmenuBtn = new MenuItem("Vehicle Related Options", "Open this submenu for vehicle related subcategories.")
+            {
+                Label = ">>>",
+                LeftIcon = MenuItem.Icon.CAR
+            };
             Menu.AddMenuItem(vehicleSubmenuBtn);
 
             if (IsAllowed(Permission.VOMenu))
@@ -843,7 +851,8 @@ namespace vMenuClient
             var addonScriptsMenu = AddonScriptsMenu.GetMenu();
             var addonScriptsButton = new MenuItem("Scripts", "Open the menu for integrated external scripts.")
             {
-                Label = ">>>"
+                Label = ">>>",
+                LeftIcon = MenuItem.Icon.STAR
             };
             AddMenu(Menu, addonScriptsMenu, addonScriptsButton);
 
@@ -853,7 +862,8 @@ namespace vMenuClient
                 var menu = OnlinePlayersMenu.GetMenu();
                 var button = new MenuItem("Online Players", "All currently connected players.")
                 {
-                    Label = ">>>"
+                    Label = ">>>",
+                    LeftIcon = MenuItem.Icon.GLOBE_BLUE
                 };
                 AddMenu(Menu, menu, button);
                 Menu.OnItemSelect += async (sender, item, index) =>
@@ -872,7 +882,8 @@ namespace vMenuClient
                 var menu = RecordingMenu.GetMenu();
                 var button = new MenuItem("Recording Options", "In-game recording options.")
                 {
-                    Label = ">>>"
+                    Label = ">>>",
+                    LeftIcon = MenuItem.Icon.ROCKSTAR
                 };
                 AddMenu(Menu, menu, button);
             }
@@ -882,7 +893,8 @@ namespace vMenuClient
                 var menu = MiscSettingsMenu.GetMenu();
                 var button = new MenuItem("Misc Settings", "Miscellaneous vMenu options/settings can be configured here. You can also save your settings in this menu.")
                 {
-                    Label = ">>>"
+                    Label = ">>>",
+                    LeftIcon = MenuItem.Icon.INFO
                 };
                 AddMenu(Menu, menu, button);
 
@@ -898,7 +910,11 @@ namespace vMenuClient
                 }
             }
 
-            var worldSubmenuBtn = new MenuItem("World Related Options", "Open this submenu for world related subcategories.") { Label = ">>>" };
+            var worldSubmenuBtn = new MenuItem("World Related Options", "Open this submenu for world related subcategories.")
+            {
+                Label = ">>>",
+                LeftIcon = MenuItem.Icon.GLOBE_GREEN
+            };
             Menu.AddMenuItem(worldSubmenuBtn);
 
             if (IsAllowed(Permission.TOMenu) && GetSettingsBool(Setting.vmenu_enable_time_sync))
