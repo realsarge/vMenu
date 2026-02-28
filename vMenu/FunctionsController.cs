@@ -151,10 +151,7 @@ namespace vMenuClient
             {
                 Tick += PlayerBlipsControl;
             }
-            if (IsAllowed(Permission.MSOverheadNames))
-            {
-                Tick += PlayerOverheadNamesControl;
-            }
+            Tick += PlayerOverheadNamesControl;
             if (IsAllowed(Permission.POMenu))
             {
                 Tick += PlayerOptions;
@@ -2394,18 +2391,6 @@ namespace vMenuClient
         private async Task PlayerOverheadNamesControl()
         {
             await Delay(500);
-
-            var enabled = MainMenu.MiscSettingsMenu?.MiscShowOverheadNames ?? UserDefaults.MiscShowOverheadNames;
-            if (!enabled)
-            {
-                foreach (var gamerTag in gamerTags)
-                {
-                    RemoveMpGamerTag(gamerTag.Value);
-                }
-                gamerTags.Clear();
-                gamerTagText.Clear();
-                return;
-            }
 
             foreach (var player in Players)
             {

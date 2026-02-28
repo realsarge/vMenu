@@ -38,7 +38,7 @@ namespace vMenuClient.menus
         public bool MPPedPreviews { get; private set; } = UserDefaults.MPPedPreviews;
         public bool ShowLocationBlips { get; private set; } = UserDefaults.MiscLocationBlips;
         public bool ShowPlayerBlips { get; private set; } = UserDefaults.MiscShowPlayerBlips;
-        public bool MiscShowOverheadNames { get; private set; } = UserDefaults.MiscShowOverheadNames;
+        public bool MiscShowOverheadNames { get; private set; } = true;
         public bool ShowVehicleModelDimensions { get; private set; } = false;
         public bool ShowPedModelDimensions { get; private set; } = false;
         public bool ShowPropModelDimensions { get; private set; } = false;
@@ -189,7 +189,6 @@ namespace vMenuClient.menus
 
             var locationBlips = new MenuCheckboxItem("Location Blips", "Shows blips on the map for some common locations.", ShowLocationBlips);
             var playerBlips = new MenuCheckboxItem("Show Player Blips", "Shows blips on the map for all players. ~y~Note for when the server is using OneSync Infinity: this won't work for players that are too far away.", ShowPlayerBlips);
-            var playerNames = new MenuCheckboxItem("Show Player Names", "Enables or disables player overhead names.", MiscShowOverheadNames);
             var respawnDefaultCharacter = new MenuCheckboxItem("Respawn As Default MP Character", "If you enable this, then you will (re)spawn as your default saved MP character. Note the server owner can globally disable this option. To set your default character, go to one of your saved MP Characters and click the 'Set As Default Character' button.", MiscRespawnDefaultCharacter);
             var restorePlayerAppearance = new MenuCheckboxItem("Restore Player Appearance", "Restore your player's skin whenever you respawn after being dead. Re-joining a server will not restore your previous skin.", RestorePlayerAppearance);
             var restorePlayerWeapons = new MenuCheckboxItem("Restore Player Weapons", "Restore your weapons whenever you respawn after being dead. Re-joining a server will not restore your previous weapons.", RestorePlayerWeapons);
@@ -641,10 +640,6 @@ namespace vMenuClient.menus
             {
                 menu.AddMenuItem(playerBlips);
             }
-            if (IsAllowed(Permission.MSOverheadNames))
-            {
-                menu.AddMenuItem(playerNames);
-            }
             // always allowed, it just won't do anything if the server owner disabled the feature, but players can still toggle it.
             menu.AddMenuItem(respawnDefaultCharacter);
             if (IsAllowed(Permission.MSRestoreAppearance))
@@ -764,10 +759,6 @@ namespace vMenuClient.menus
                 else if (item == playerBlips)
                 {
                     ShowPlayerBlips = _checked;
-                }
-                else if (item == playerNames)
-                {
-                    MiscShowOverheadNames = _checked;
                 }
                 else if (item == respawnDefaultCharacter)
                 {

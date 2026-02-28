@@ -260,8 +260,8 @@ namespace vMenuClient
 
         public static bool MiscShowOverheadNames
         {
-            get { return GetSettingsBool("miscShowOverheadNames"); }
-            set { SetSavedSettingsBool("miscShowOverheadNames", value); }
+            get { return true; }
+            set { SetSavedSettingsBool("miscShowOverheadNames", true); }
         }
 
         public static bool MiscRestorePlayerAppearance
