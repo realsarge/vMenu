@@ -64,6 +64,20 @@ namespace vMenuClient
         public static bool RightAlignMenus() => UserDefaults.MiscRightAlignMenu;
         #endregion
 
+        #region Vehicle repair helpers
+        public static void RepairVehiclePreserveFuel(Vehicle vehicle)
+        {
+            if (vehicle == null || !vehicle.Exists())
+            {
+                return;
+            }
+
+            var fuelLevel = vehicle.FuelLevel;
+            vehicle.Repair();
+            vehicle.FuelLevel = fuelLevel;
+        }
+        #endregion
+
         #region Toggle vehicle alarm
         public static void ToggleVehicleAlarm(Vehicle vehicle)
         {

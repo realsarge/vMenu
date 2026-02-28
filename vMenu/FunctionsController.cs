@@ -369,7 +369,7 @@ namespace vMenuClient
 
                     if (autoRepairGod && IsVehicleDamaged(veh.Handle))
                     {
-                        veh.Repair();
+                        RepairVehiclePreserveFuel(veh);
                     }
 
                     veh.CanBeVisiblyDamaged = !visualGod;

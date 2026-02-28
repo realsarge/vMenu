@@ -505,7 +505,7 @@ namespace vMenuClient.menus
                         // Repair vehicle.
                         if (item == fixVehicle)
                         {
-                            vehicle.Repair();
+                            RepairVehiclePreserveFuel(vehicle);
                         }
                         // Clean vehicle.
                         else if (item == cleanVehicle)
