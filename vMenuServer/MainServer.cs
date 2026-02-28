@@ -992,49 +992,7 @@ namespace vMenuServer
         [EventHandler("vMenu:SendMessageToPlayer")]
         internal void SendPrivateMessage([FromSource] Player source, int target, string message)
         {
-            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSendMessage, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
-            {
-                BanManager.BanCheater(source);
-                return;
-            }
-
-            bool sourcePmsDisabled = source.State.Get("vmenu_pms_disabled") ?? false;
-
-            if (sourcePmsDisabled)
-            {
-                source.TriggerEvent("vMenu:Notify", "You can't send a private message if you have private messages disabled yourself. Enable them in the Misc Settings menu and try again.");
-                return;
-            }
-
-            Player targetPlayer = GetPlayerFromServerId(target);
-
-            if (targetPlayer is null)
-            {
-                source.TriggerEvent("vMenu:Notify", "Failed to send message because the target could not be found. Did they disconnect?");
-                return;
-            }
-
-            bool targetPmsDisabled = targetPlayer.State.Get("vmenu_pms_disabled") ?? false;
-
-            if (targetPmsDisabled)
-            {
-                source.TriggerEvent("vMenu:Notify", $"Sorry, your private message to <C>{source.Name}</C>~s~ could not be delivered because they have private messages disabled.");
-                return;
-            }
-
-            targetPlayer.TriggerEvent("vMenu:PrivateMessage", source.Handle, message);
-
-            foreach (string playerHandle in joinedPlayers)
-            {
-                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSeePrivateMessages, playerHandle) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, playerHandle))
-                {
-                    continue;
-                }
-
-                Player player = GetPlayerFromServerId(playerHandle);
-
-                player?.TriggerEvent("vMenu:Notify", $"[vMenu Staff Log] <C>{source.Name}</C>~s~ sent a PM to <C>{targetPlayer.Name}</C>~s~: {message}");
-            }
+            source.TriggerEvent("vMenu:Notify", "Private messages are disabled on this server.");
         }
         #endregion
 

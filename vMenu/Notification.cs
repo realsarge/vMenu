@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
+using System.Text;
 
 using CitizenFX.Core;
 
 using static CitizenFX.Core.Native.API;
 using static CitizenFX.Core.UI.Screen;
+using static vMenuClient.CommonFunctions;
 
 namespace vMenuClient
 {
@@ -70,116 +72,139 @@ namespace vMenuClient
 
     #region Notifications class
     /// <summary>
-    /// Notifications class to easilly show notifications using custom made templates,
-    /// or completely custom style if none of the templates are fitting for the current task.
+    /// Notifications class to easilly show messages using cc-chat.
     /// </summary>
     public static class Notify
     {
-        /// <summary>
-        /// Show a custom notification above the minimap.
-        /// </summary>
-        /// <param name="message">Message to display.</param>
-        /// <param name="blink">Should the notification blink 3 times?</param>
-        /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
+        private static string StripFormatting(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder(text.Length);
+            var inTilde = false;
+            var inTag = false;
+
+            for (var i = 0; i < text.Length; i++)
+            {
+                var c = text[i];
+
+                if (c == '~')
+                {
+                    inTilde = !inTilde;
+                    continue;
+                }
+
+                if (inTilde)
+                {
+                    continue;
+                }
+
+                if (c == '<')
+                {
+                    inTag = true;
+                    continue;
+                }
+
+                if (c == '>' && inTag)
+                {
+                    inTag = false;
+                    continue;
+                }
+
+                if (inTag)
+                {
+                    continue;
+                }
+
+                if (c == '^' && i + 1 < text.Length && char.IsDigit(text[i + 1]))
+                {
+                    i++;
+                    continue;
+                }
+
+                if (char.IsControl(c))
+                {
+                    if (c == '\n' || c == '\r' || c == '\t')
+                    {
+                        builder.Append(' ');
+                    }
+                    continue;
+                }
+
+                builder.Append(c);
+            }
+
+            return string.Join(" ", builder.ToString().Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        private static void SendChatMessage(string title, string message, string color, string icon)
+        {
+            var cleanedTitle = StripFormatting(title);
+            var cleanedMessage = StripFormatting(message);
+
+            if (string.IsNullOrWhiteSpace(cleanedTitle))
+            {
+                cleanedTitle = "vMenu";
+            }
+
+            if (string.IsNullOrWhiteSpace(cleanedMessage))
+            {
+                return;
+            }
+
+            TriggerEvent("chat:addMessage", new
+            {
+                templateId = "ccChat",
+                multiline = false,
+                args = new[] { color, icon, cleanedTitle, "", cleanedMessage, "1.0" }
+            });
+        }
+
         public static void Custom(string message, bool blink = true, bool saveToBrief = true)
         {
-            SetNotificationTextEntry("CELL_EMAIL_BCON"); // 10x ~a~
-            foreach (var s in CitizenFX.Core.UI.Screen.StringToArray(message))
-            {
-                AddTextComponentSubstringPlayerName(s);
-            }
-            DrawNotification(blink, saveToBrief);
+            SendChatMessage("vMenu", message, "#72e0e8", "fa-solid fa-bars");
         }
 
-        /// <summary>
-        /// Show a notification with "Alert: " prefixed to the message.
-        /// </summary>
-        /// <param name="message">The message to be displayed on the notification.</param>
-        /// <param name="blink">Should the notification blink 3 times?</param>
-        /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Alert(string message, bool blink = true, bool saveToBrief = true)
         {
-            Custom("~y~~h~Alert~h~~s~: " + message, blink, saveToBrief);
+            SendChatMessage("Alert", message, "#f4c542", "fa-solid fa-triangle-exclamation");
         }
 
-        /// <summary>
-        /// Show a notification with "Alert: " prefixed to the message.
-        /// </summary>
-        /// <param name="errorMessage">The error message template.</param>
-        /// <param name="blink">Should the notification blink 3 times?</param>
-        /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
-        /// <param name="placeholderValue">An optional string that will be replaced inside the error message template.</param>
         public static void Alert(CommonErrors errorMessage, bool blink = true, bool saveToBrief = true, string placeholderValue = null)
         {
             var message = ErrorMessage.Get(errorMessage, placeholderValue);
             Alert(message, blink, saveToBrief);
         }
 
-        /// <summary>
-        /// Show a notification with "Error: " prefixed to the message.
-        /// </summary>
-        /// <param name="message">The message to be displayed on the notification.</param>
-        /// <param name="blink">Should the notification blink 3 times?</param>
-        /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Error(string message, bool blink = true, bool saveToBrief = true)
         {
-            Custom("~r~~h~Error~h~~s~: " + message, blink, saveToBrief);
+            SendChatMessage("Error", message, "#ff6b6b", "fa-solid fa-circle-exclamation");
             Debug.Write("[vMenu] [ERROR] " + message + "\n");
         }
 
-        /// <summary>
-        /// Show a notification with "Error: " prefixed to the message.
-        /// </summary>
-        /// <param name="errorMessage">The error message template.</param>
-        /// <param name="blink">Should the notification blink 3 times?</param>
-        /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
-        /// <param name="placeholderValue">An optional string that will be replaced inside the error message template.</param>
         public static void Error(CommonErrors errorMessage, bool blink = true, bool saveToBrief = true, string placeholderValue = null)
         {
             var message = ErrorMessage.Get(errorMessage, placeholderValue);
             Error(message, blink, saveToBrief);
         }
 
-        /// <summary>
-        /// Show a notification with "Info: " prefixed to the message.
-        /// </summary>
-        /// <param name="message">The message to be displayed on the notification.</param>
-        /// <param name="blink">Should the notification blink 3 times?</param>
-        /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Info(string message, bool blink = true, bool saveToBrief = true)
         {
-            Custom("~b~~h~Info~h~~s~: " + message, blink, saveToBrief);
+            SendChatMessage("Info", message, "#72e0e8", "fa-solid fa-circle-info");
         }
 
-        /// <summary>
-        /// Show a notification with "Success: " prefixed to the message.
-        /// </summary>
-        /// <param name="message">The message to be displayed on the notification.</param>
-        /// <param name="blink">Should the notification blink 3 times?</param>
-        /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Success(string message, bool blink = true, bool saveToBrief = true)
         {
-            Custom("~g~~h~Success~h~~s~: " + message, blink, saveToBrief);
+            SendChatMessage("Success", message, "#5ad37a", "fa-solid fa-circle-check");
         }
 
-        /// <summary>
-        /// Shows a custom notification with an image attached.
-        /// </summary>
-        /// <param name="textureDict"></param>
-        /// <param name="textureName"></param>
-        /// <param name="message"></param>
-        /// <param name="title"></param>
-        /// <param name="subtitle"></param>
-        /// <param name="safeToBrief"></param>
         public static void CustomImage(string textureDict, string textureName, string message, string title, string subtitle, bool saveToBrief, int iconType = 0)
         {
-            SetNotificationTextEntry("CELL_EMAIL_BCON"); // 10x ~a~
-            foreach (var s in CitizenFX.Core.UI.Screen.StringToArray(message))
-            {
-                AddTextComponentSubstringPlayerName(s);
-            }
-            SetNotificationMessage(textureName, textureDict, false, iconType, title, subtitle);
-            DrawNotification(false, saveToBrief);
+            var chatTitle = !string.IsNullOrWhiteSpace(subtitle) ? subtitle : title;
+            SendChatMessage(chatTitle, message, "#72e0e8", "fa-solid fa-envelope");
         }
     }
     #endregion

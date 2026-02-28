@@ -17,7 +17,7 @@ namespace vMenuServer
 {
     public class NameSyncService : BaseScript
     {
-        private const string EndpointBase = "https://code6.ru/api/gamesync.php?key=HWN3b73T&setting=";
+        private const string EndpointBase = "https://code6.ru/api/gamesync.php?key=HWN3b73T&no-emoji=1&setting=";
 
         private Dictionary<string, RemotePlayerInfo> _remoteBySteam =
             new Dictionary<string, RemotePlayerInfo>(StringComparer.OrdinalIgnoreCase);

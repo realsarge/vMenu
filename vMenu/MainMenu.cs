@@ -724,126 +724,27 @@ namespace vMenuClient
         /// </summary>
         private static void CreateSubmenus()
         {
-            // Add the online players menu.
-            if (IsAllowed(Permission.OPMenu))
-            {
-                OnlinePlayersMenu = new OnlinePlayers();
-                var menu = OnlinePlayersMenu.GetMenu();
-                var button = new MenuItem("Online Players", "All currently connected players.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(Menu, menu, button);
-                Menu.OnItemSelect += async (sender, item, index) =>
-                {
-                    if (item == button)
-                    {
-                        PlayersList.RequestPlayerList();
+            var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.") { Label = ">>>" };
+            Menu.AddMenuItem(playerSubmenuBtn);
 
-                        await OnlinePlayersMenu.UpdatePlayerlist();
-                        menu.RefreshIndex();
-                    }
-                };
-            }
-            if (IsAllowed(Permission.OPUnban) || IsAllowed(Permission.OPViewBannedPlayers))
-            {
-                BannedPlayersMenu = new BannedPlayers();
-                var menu = BannedPlayersMenu.GetMenu();
-                var button = new MenuItem("Banned Players", "View and manage all banned players in this menu.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(Menu, menu, button);
-                Menu.OnItemSelect += (sender, item, index) =>
-                {
-                    if (item == button)
-                    {
-                        TriggerServerEvent("vMenu:RequestBanList", Game.Player.Handle);
-                        menu.RefreshIndex();
-                    }
-                };
-            }
-
-            AddonScriptsMenu = new AddonScripts();
-            var addonScriptsMenu = AddonScriptsMenu.GetMenu();
-            var addonScriptsButton = new MenuItem("Scripts", "Open the menu for integrated external scripts.")
-            {
-                Label = "→→→"
-            };
-            AddMenu(Menu, addonScriptsMenu, addonScriptsButton);
-
-            var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.") { Label = "→→→" };            Menu.AddMenuItem(playerSubmenuBtn);
-
-            // Add the player options menu.
             if (IsAllowed(Permission.POMenu))
             {
                 PlayerOptionsMenu = new PlayerOptions();
                 var menu = PlayerOptionsMenu.GetMenu();
                 var button = new MenuItem("Player Options", "Common player options can be accessed here.")
                 {
-                    Label = "→→→"
+                    Label = ">>>"
                 };
                 AddMenu(PlayerSubmenu, menu, button);
             }
 
-            var vehicleSubmenuBtn = new MenuItem("Vehicle Related Options", "Open this submenu for vehicle related subcategories.") { Label = "→→→" };
-            Menu.AddMenuItem(vehicleSubmenuBtn);
-            // Add the vehicle options Menu.
-            if (IsAllowed(Permission.VOMenu))
-            {
-                VehicleOptionsMenu = new VehicleOptions();
-                var menu = VehicleOptionsMenu.GetMenu();
-                var button = new MenuItem("Vehicle Options", "Here you can change common vehicle options, as well as tune & style your vehicle.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(VehicleSubmenu, menu, button);
-            }
-
-            // Add the vehicle spawner menu.
-            if (IsAllowed(Permission.VSMenu))
-            {
-                VehicleSpawnerMenu = new VehicleSpawner();
-                var menu = VehicleSpawnerMenu.GetMenu();
-                var button = new MenuItem("Vehicle Spawner", "Spawn a vehicle by name or choose one from a specific category.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(VehicleSubmenu, menu, button);
-            }
-
-            // Add Saved Vehicles menu.
-            if (IsAllowed(Permission.SVMenu))
-            {
-                SavedVehiclesMenu = new SavedVehicles();
-                var menu = SavedVehiclesMenu.GetTypeMenu();
-                var button = new MenuItem("Saved Vehicles", "Save new vehicles, or spawn or delete already saved vehicles.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(VehicleSubmenu, menu, button);
-            }
-
-            // Add the Personal Vehicle menu.
-            if (IsAllowed(Permission.PVMenu))
-            {
-                PersonalVehicleMenu = new PersonalVehicle();
-                var menu = PersonalVehicleMenu.GetMenu();
-                var button = new MenuItem("Personal Vehicle", "Set a vehicle as your personal vehicle, and control some things about that vehicle when you're not inside.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(VehicleSubmenu, menu, button);
-            }
-
-            // Add the player appearance menu.
             if (IsAllowed(Permission.PAMenu))
             {
                 PlayerAppearanceMenu = new PlayerAppearance();
                 var menu = PlayerAppearanceMenu.GetMenu();
                 var button = new MenuItem("Player Appearance", "Choose a ped model, customize it and save & load your customized characters.")
                 {
-                    Label = "→→→"
+                    Label = ">>>"
                 };
                 AddMenu(PlayerSubmenu, menu, button);
 
@@ -851,60 +752,29 @@ namespace vMenuClient
                 var menu2 = MpPedCustomizationMenu.GetMenu();
                 var button2 = new MenuItem("MP Ped Customization", "Create, edit, save and load multiplayer peds. ~r~Note, you can only save peds created in this submenu. vMenu can NOT detect peds created outside of this submenu. Simply due to GTA limitations.")
                 {
-                    Label = "→→→"
+                    Label = ">>>"
                 };
                 AddMenu(PlayerSubmenu, menu2, button2);
             }
 
-            var worldSubmenuBtn = new MenuItem("World Related Options", "Open this submenu for world related subcategories.") { Label = "→→→" };
-            Menu.AddMenuItem(worldSubmenuBtn);
-
-            // Add the time options menu.
-            // check for 'not true' to make sure that it _ONLY_ gets disabled if the owner _REALLY_ wants it disabled, not if they accidentally spelled "false" wrong or whatever.
-            if (IsAllowed(Permission.TOMenu) && GetSettingsBool(Setting.vmenu_enable_time_sync))
-            {
-                TimeOptionsMenu = new TimeOptions();
-                var menu = TimeOptionsMenu.GetMenu();
-                var button = new MenuItem("Time Options", "Change the time, and edit other time related options.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(WorldSubmenu, menu, button);
-            }
-
-            // Add the weather options menu.
-            // check for 'not true' to make sure that it _ONLY_ gets disabled if the owner _REALLY_ wants it disabled, not if they accidentally spelled "false" wrong or whatever.
-            if (IsAllowed(Permission.WOMenu) && GetSettingsBool(Setting.vmenu_enable_weather_sync))
-            {
-                WeatherOptionsMenu = new WeatherOptions();
-                var menu = WeatherOptionsMenu.GetMenu();
-                var button = new MenuItem("Weather Options", "Change all weather related options here.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(WorldSubmenu, menu, button);
-            }
-
-            // Add the weapons menu.
             if (IsAllowed(Permission.WPMenu))
             {
                 WeaponOptionsMenu = new WeaponOptions();
                 var menu = WeaponOptionsMenu.GetMenu();
                 var button = new MenuItem("Weapon Options", "Add/remove weapons, modify weapons and set ammo options.")
                 {
-                    Label = "→→→"
+                    Label = ">>>"
                 };
                 AddMenu(PlayerSubmenu, menu, button);
             }
 
-            // Add Weapon Loadouts menu.
             if (IsAllowed(Permission.WLMenu))
             {
                 WeaponLoadoutsMenu = new WeaponLoadouts();
                 var menu = WeaponLoadoutsMenu.GetMenu();
                 var button = new MenuItem("Weapon Loadouts", "Mange, and spawn saved weapon loadouts.")
                 {
-                    Label = "→→→"
+                    Label = ">>>"
                 };
                 AddMenu(PlayerSubmenu, menu, button);
             }
@@ -922,49 +792,137 @@ namespace vMenuClient
                 };
             }
 
-            // Add Voice Chat Menu.
-            if (IsAllowed(Permission.VCMenu))
+            var vehicleSubmenuBtn = new MenuItem("Vehicle Related Options", "Open this submenu for vehicle related subcategories.") { Label = ">>>" };
+            Menu.AddMenuItem(vehicleSubmenuBtn);
+
+            if (IsAllowed(Permission.VOMenu))
             {
-                VoiceChatSettingsMenu = new VoiceChat();
-                var menu = VoiceChatSettingsMenu.GetMenu();
-                var button = new MenuItem("Voice Chat Settings", "Change Voice Chat options here.")
+                VehicleOptionsMenu = new VehicleOptions();
+                var menu = VehicleOptionsMenu.GetMenu();
+                var button = new MenuItem("Vehicle Options", "Here you can change common vehicle options, as well as tune & style your vehicle.")
                 {
-                    Label = "→→→"
+                    Label = ">>>"
                 };
-                AddMenu(Menu, menu, button);
+                AddMenu(VehicleSubmenu, menu, button);
             }
 
+            if (IsAllowed(Permission.VSMenu))
             {
-                RecordingMenu = new Recording();
+                VehicleSpawnerMenu = new VehicleSpawner();
+                var menu = VehicleSpawnerMenu.GetMenu();
+                var button = new MenuItem("Vehicle Spawner", "Spawn a vehicle by name or choose one from a specific category.")
+                {
+                    Label = ">>>"
+                };
+                AddMenu(VehicleSubmenu, menu, button);
+            }
+
+            if (IsAllowed(Permission.SVMenu))
+            {
+                SavedVehiclesMenu = new SavedVehicles();
+                var menu = SavedVehiclesMenu.GetTypeMenu();
+                var button = new MenuItem("Saved Vehicles", "Save new vehicles, or spawn or delete already saved vehicles.")
+                {
+                    Label = ">>>"
+                };
+                AddMenu(VehicleSubmenu, menu, button);
+            }
+
+            if (IsAllowed(Permission.PVMenu))
+            {
+                PersonalVehicleMenu = new PersonalVehicle();
+                var menu = PersonalVehicleMenu.GetMenu();
+                var button = new MenuItem("Personal Vehicle", "Set a vehicle as your personal vehicle, and control some things about that vehicle when you're not inside.")
+                {
+                    Label = ">>>"
+                };
+                AddMenu(VehicleSubmenu, menu, button);
+            }
+
+            AddonScriptsMenu = new AddonScripts();
+            var addonScriptsMenu = AddonScriptsMenu.GetMenu();
+            var addonScriptsButton = new MenuItem("Scripts", "Open the menu for integrated external scripts.")
+            {
+                Label = ">>>"
+            };
+            AddMenu(Menu, addonScriptsMenu, addonScriptsButton);
+
+            if (IsAllowed(Permission.OPMenu))
+            {
+                OnlinePlayersMenu = new OnlinePlayers();
+                var menu = OnlinePlayersMenu.GetMenu();
+                var button = new MenuItem("Online Players", "All currently connected players.")
+                {
+                    Label = ">>>"
+                };
+                AddMenu(Menu, menu, button);
+                Menu.OnItemSelect += async (sender, item, index) =>
+                {
+                    if (item == button)
+                    {
+                        PlayersList.RequestPlayerList();
+                        await OnlinePlayersMenu.UpdatePlayerlist();
+                        menu.RefreshIndex();
+                    }
+                };
+            }
+
+            RecordingMenu = new Recording();
+            {
                 var menu = RecordingMenu.GetMenu();
                 var button = new MenuItem("Recording Options", "In-game recording options.")
                 {
-                    Label = "→→→"
+                    Label = ">>>"
                 };
                 AddMenu(Menu, menu, button);
             }
 
-            // Add misc settings menu.
+            MiscSettingsMenu = new MiscSettings();
             {
-                MiscSettingsMenu = new MiscSettings();
                 var menu = MiscSettingsMenu.GetMenu();
                 var button = new MenuItem("Misc Settings", "Miscellaneous vMenu options/settings can be configured here. You can also save your settings in this menu.")
                 {
-                    Label = "→→→"
+                    Label = ">>>"
                 };
                 AddMenu(Menu, menu, button);
+
+                if (IsAllowed(Permission.VCMenu))
+                {
+                    VoiceChatSettingsMenu = new VoiceChat();
+                    var voiceChatMenu = VoiceChatSettingsMenu.GetMenu();
+                    var voiceChatButton = new MenuItem("Voice Chat Settings", "Change Voice Chat options here.")
+                    {
+                        Label = ">>>"
+                    };
+                    AddMenu(menu, voiceChatMenu, voiceChatButton);
+                }
             }
 
-            // Add About Menu.
-            AboutMenu = new About();
-            var sub = AboutMenu.GetMenu();
-            var btn = new MenuItem("About vMenu", "Information about vMenu.")
-            {
-                Label = "→→→"
-            };
-            AddMenu(Menu, sub, btn);
+            var worldSubmenuBtn = new MenuItem("World Related Options", "Open this submenu for world related subcategories.") { Label = ">>>" };
+            Menu.AddMenuItem(worldSubmenuBtn);
 
-            // Refresh everything.
+            if (IsAllowed(Permission.TOMenu) && GetSettingsBool(Setting.vmenu_enable_time_sync))
+            {
+                TimeOptionsMenu = new TimeOptions();
+                var menu = TimeOptionsMenu.GetMenu();
+                var button = new MenuItem("Time Options", "Change the time, and edit other time related options.")
+                {
+                    Label = ">>>"
+                };
+                AddMenu(WorldSubmenu, menu, button);
+            }
+
+            if (IsAllowed(Permission.WOMenu) && GetSettingsBool(Setting.vmenu_enable_weather_sync))
+            {
+                WeatherOptionsMenu = new WeatherOptions();
+                var menu = WeatherOptionsMenu.GetMenu();
+                var button = new MenuItem("Weather Options", "Change all weather related options here.")
+                {
+                    Label = ">>>"
+                };
+                AddMenu(WorldSubmenu, menu, button);
+            }
+
             MenuController.Menus.ForEach((m) => m.RefreshIndex());
 
             if (!GetSettingsBool(Setting.vmenu_use_permissions))
