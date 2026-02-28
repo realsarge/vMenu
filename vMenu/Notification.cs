@@ -76,6 +76,24 @@ namespace vMenuClient
     /// </summary>
     public static class Notify
     {
+        private const string VMenuBlue = "#2a6bbe";
+
+        private static readonly Dictionary<string, string> NotificationTranslations = new Dictionary<string, string>()
+        {
+            ["vMenu"] = "vMenu",
+            ["Alert"] = "Внимание",
+            ["Error"] = "Ошибка",
+            ["Info"] = "Инфо",
+            ["Success"] = "Успешно",
+            ["Your category description has been changed."] = "Описание категории было изменено.",
+            ["Stopped spectating."] = "Наблюдение остановлено.",
+            ["Your settings have been saved."] = "Ваши настройки сохранены.",
+            ["Fit applied."] = "Одежда применена.",
+            ["Fit clipboard cleared."] = "Буфер одежды очищен.",
+            ["Teleported to waypoint."] = "Телепортация к метке выполнена.",
+            ["Attempting to re-join the session."] = "Попытка повторно подключиться к сессии.",
+        };
+
         private static string StripFormatting(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -140,10 +158,32 @@ namespace vMenuClient
             return string.Join(" ", builder.ToString().Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries));
         }
 
+        private static string TranslateNotification(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            if (NotificationTranslations.TryGetValue(text, out var translated))
+            {
+                return translated;
+            }
+
+            const string spectatingPrefix = "You are now spectating ";
+            if (text.StartsWith(spectatingPrefix, System.StringComparison.Ordinal) && text.EndsWith(".", System.StringComparison.Ordinal))
+            {
+                var playerName = text.Substring(spectatingPrefix.Length).TrimEnd('.');
+                return $"Вы теперь наблюдаете за {playerName}.";
+            }
+
+            return text;
+        }
+
         private static void SendChatMessage(string title, string message, string color, string icon)
         {
-            var cleanedTitle = StripFormatting(title);
-            var cleanedMessage = StripFormatting(message);
+            var cleanedTitle = TranslateNotification(StripFormatting(title));
+            var cleanedMessage = TranslateNotification(StripFormatting(message));
 
             if (string.IsNullOrWhiteSpace(cleanedTitle))
             {
@@ -165,12 +205,12 @@ namespace vMenuClient
 
         public static void Custom(string message, bool blink = true, bool saveToBrief = true)
         {
-            SendChatMessage("vMenu", message, "#72e0e8", "fa-solid fa-bars");
+            SendChatMessage("vMenu", message, VMenuBlue, "fa-solid fa-bars");
         }
 
         public static void Alert(string message, bool blink = true, bool saveToBrief = true)
         {
-            SendChatMessage("Alert", message, "#f4c542", "fa-solid fa-triangle-exclamation");
+            SendChatMessage("Alert", message, VMenuBlue, "fa-solid fa-triangle-exclamation");
         }
 
         public static void Alert(CommonErrors errorMessage, bool blink = true, bool saveToBrief = true, string placeholderValue = null)
@@ -181,7 +221,7 @@ namespace vMenuClient
 
         public static void Error(string message, bool blink = true, bool saveToBrief = true)
         {
-            SendChatMessage("Error", message, "#ff6b6b", "fa-solid fa-circle-exclamation");
+            SendChatMessage("Error", message, VMenuBlue, "fa-solid fa-circle-exclamation");
             Debug.Write("[vMenu] [ERROR] " + message + "\n");
         }
 
@@ -193,18 +233,18 @@ namespace vMenuClient
 
         public static void Info(string message, bool blink = true, bool saveToBrief = true)
         {
-            SendChatMessage("Info", message, "#72e0e8", "fa-solid fa-circle-info");
+            SendChatMessage("Info", message, VMenuBlue, "fa-solid fa-circle-info");
         }
 
         public static void Success(string message, bool blink = true, bool saveToBrief = true)
         {
-            SendChatMessage("Success", message, "#5ad37a", "fa-solid fa-circle-check");
+            SendChatMessage("Success", message, VMenuBlue, "fa-solid fa-circle-check");
         }
 
         public static void CustomImage(string textureDict, string textureName, string message, string title, string subtitle, bool saveToBrief, int iconType = 0)
         {
             var chatTitle = !string.IsNullOrWhiteSpace(subtitle) ? subtitle : title;
-            SendChatMessage(chatTitle, message, "#72e0e8", "fa-solid fa-envelope");
+            SendChatMessage(chatTitle, message, VMenuBlue, "fa-solid fa-envelope");
         }
     }
     #endregion

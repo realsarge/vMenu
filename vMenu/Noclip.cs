@@ -24,6 +24,12 @@ namespace vMenuClient
             "Slow"
         };
 
+        private readonly List<float> speedMultipliers = new()
+        {
+            0.15f,
+            0.5f
+        };
+
         public NoClip()
         {
             Tick += NoClipHandler;
@@ -210,11 +216,7 @@ namespace vMenuClient
                         FollowCamMode = !FollowCamMode;
                     }
                 }
-                float moveSpeed = MovingSpeed;
-                if (MovingSpeed > speeds.Count / 2)
-                {
-                    moveSpeed *= 1.8f;
-                }
+                float moveSpeed = speedMultipliers[Math.Max(0, Math.Min(MovingSpeed, speedMultipliers.Count - 1))];
                 moveSpeed = moveSpeed / (1f / GetFrameTime()) * 60;
                 newPos = GetOffsetFromEntityInWorldCoords(noclipEntity, 0f, yoff * (moveSpeed + 0.3f), zoff * (moveSpeed + 0.3f));
 
