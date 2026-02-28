@@ -48,6 +48,7 @@ namespace vMenuClient
         public static MiscSettings MiscSettingsMenu { get; private set; }
         public static VoiceChat VoiceChatSettingsMenu { get; private set; }
         public static About AboutMenu { get; private set; }
+        public static AddonScripts AddonScriptsMenu { get; private set; }
         public static bool NoClipEnabled { get { return NoClip.IsNoclipActive(); } set { NoClip.SetNoclipActive(value); } }
         public static IPlayerList PlayersList;
 
@@ -62,6 +63,7 @@ namespace vMenuClient
 
         private const int currentCleanupVersion = 2;
         private static int nextLocalizationPass = 0;
+        private static string lastMenuHeaderName = string.Empty;
         #endregion
 
         /// <summary>
@@ -478,10 +480,11 @@ namespace vMenuClient
                 return;
             }
             // Create the main menu.
-            Menu = new Menu(Game.Player.Name, "Main Menu");
-            PlayerSubmenu = new Menu(Game.Player.Name, "Player Related Options");
-            VehicleSubmenu = new Menu(Game.Player.Name, "Vehicle Related Options");
-            WorldSubmenu = new Menu(Game.Player.Name, "World Options");
+            var menuHeaderName = GetCurrentMenuHeaderName();
+            Menu = new Menu(menuHeaderName, "Main Menu");
+            PlayerSubmenu = new Menu(menuHeaderName, "Player Related Options");
+            VehicleSubmenu = new Menu(menuHeaderName, "Vehicle Related Options");
+            WorldSubmenu = new Menu(menuHeaderName, "World Options");
 
             // Add the main menu to the menu pool.
             MenuController.AddMenu(Menu);
@@ -493,6 +496,7 @@ namespace vMenuClient
 
             // Create all (sub)menus.
             CreateSubmenus();
+            RefreshMenuHeaders(true);
             MenuLocalizer.LocalizeAllMenus();
 
             if (!GetSettingsBool(Setting.vmenu_disable_player_stats_setup))
@@ -546,6 +550,7 @@ namespace vMenuClient
             {
                 if (GetGameTimer() >= nextLocalizationPass)
                 {
+                    RefreshMenuHeaders();
                     MenuLocalizer.LocalizeAllMenus();
                     nextLocalizationPass = GetGameTimer() + 500;
                 }
@@ -636,6 +641,81 @@ namespace vMenuClient
             MenuController.BindMenuItem(parentMenu, submenu, menuButton);
             submenu.RefreshIndex();
         }
+
+        internal static string GetCurrentMenuHeaderName()
+        {
+            var fallbackName = GetSafePlayerName(Game.Player.Name);
+
+            if (NameMapClient.NameMap.TryGetValue(Game.Player.ServerId, out var displayName) && !string.IsNullOrWhiteSpace(displayName))
+            {
+                return SanitizeMenuHeader(displayName);
+            }
+
+            return fallbackName;
+        }
+
+        private static string SanitizeMenuHeader(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return GetSafePlayerName(Game.Player.Name);
+            }
+
+            var chars = new List<char>(text.Length);
+            var inTilde = false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                var c = text[i];
+
+                if (c == '~')
+                {
+                    inTilde = !inTilde;
+                    continue;
+                }
+
+                if (inTilde)
+                {
+                    continue;
+                }
+
+                if (c == '^' && i + 1 < text.Length && char.IsDigit(text[i + 1]))
+                {
+                    i++;
+                    continue;
+                }
+
+                if (!char.IsControl(c))
+                {
+                    chars.Add(c);
+                }
+            }
+
+            var sanitized = new string(chars.ToArray()).Trim();
+            return string.IsNullOrWhiteSpace(sanitized) ? GetSafePlayerName(Game.Player.Name) : sanitized;
+        }
+
+        private static void RefreshMenuHeaders(bool force = false)
+        {
+            var headerName = GetCurrentMenuHeaderName();
+            if (!force && string.Equals(lastMenuHeaderName, headerName, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            lastMenuHeaderName = headerName;
+
+            MenuController.Menus.ForEach(menu =>
+            {
+                if (menu == null)
+                {
+                    return;
+                }
+
+                menu.MenuTitle = headerName;
+                menu.RefreshIndex();
+            });
+        }
         #endregion
 
         #region Create Submenus
@@ -684,8 +764,15 @@ namespace vMenuClient
                 };
             }
 
-            var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.") { Label = "→→→" };
-            Menu.AddMenuItem(playerSubmenuBtn);
+            AddonScriptsMenu = new AddonScripts();
+            var addonScriptsMenu = AddonScriptsMenu.GetMenu();
+            var addonScriptsButton = new MenuItem("Scripts", "Open the menu for integrated external scripts.")
+            {
+                Label = "→→→"
+            };
+            AddMenu(Menu, addonScriptsMenu, addonScriptsButton);
+
+            var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.") { Label = "→→→" };            Menu.AddMenuItem(playerSubmenuBtn);
 
             // Add the player options menu.
             if (IsAllowed(Permission.POMenu))
@@ -924,3 +1011,4 @@ namespace vMenuClient
         #endregion
     }
 }
+
