@@ -2326,10 +2326,66 @@ namespace vMenuClient
         #endregion
 
         #region player overhead names
-        private readonly Dictionary<Player, int> gamerTags = new();
+        private static readonly Dictionary<Player, int> gamerTags = new();
+        private static readonly Dictionary<Player, string> gamerTagText = new();
 
         private readonly float playerNamesDistance = GetSettingsFloat(Setting.vmenu_player_names_distance) > 10f ? GetSettingsFloat(Setting.vmenu_player_names_distance) : 500f;
 
+        private static string ResolveDecoratedName(Player player)
+        {
+            if (player != null && NameMapClient.NameMap.TryGetValue(player.ServerId, out var decoratedName) && !string.IsNullOrWhiteSpace(decoratedName))
+            {
+                return decoratedName;
+            }
+
+            return player?.Name ?? string.Empty;
+        }
+
+        private static string ExtractRosterTag(Player player)
+        {
+            var text = ResolveDecoratedName(player);
+            if (string.IsNullOrEmpty(text))
+            {
+                return null;
+            }
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] != '#')
+                {
+                    continue;
+                }
+
+                var j = i + 1;
+                if (j >= text.Length || !char.IsDigit(text[j]))
+                {
+                    continue;
+                }
+
+                var startDigits = j;
+                while (j < text.Length && char.IsDigit(text[j]))
+                {
+                    j++;
+                }
+
+                if (j > startDigits)
+                {
+                    return text.Substring(i, j - i);
+                }
+            }
+
+            return null;
+        }
+
+        public static void refreshCharacterNames()
+        {
+            foreach (var gamerTag in gamerTags)
+            {
+                RemoveMpGamerTag(gamerTag.Value);
+            }
+
+            gamerTags.Clear();
+        }
 
         /// <summary>
         /// Manages overhead player names.
@@ -2339,56 +2395,95 @@ namespace vMenuClient
         {
             await Delay(500);
 
-            if (MainMenu.MiscSettingsMenu != null)
+            if (MainMenu.MiscSettingsMenu == null)
             {
-                var enabled = MainMenu.MiscSettingsMenu.MiscShowOverheadNames;
-                if (!enabled)
+                return;
+            }
+
+            if (!MainMenu.MiscSettingsMenu.MiscShowOverheadNames)
+            {
+                foreach (var gamerTag in gamerTags)
                 {
-                    foreach (var gamerTag in gamerTags)
-                    {
-                        RemoveMpGamerTag(gamerTag.Value);
-                    }
-                    gamerTags.Clear();
+                    RemoveMpGamerTag(gamerTag.Value);
                 }
-                else
+                gamerTags.Clear();
+                gamerTagText.Clear();
+                return;
+            }
+
+            foreach (var player in Players)
+            {
+                if (player?.Character == null || !player.Character.Exists())
                 {
-                    foreach (var p in Players)
+                    continue;
+                }
+
+                var distSquared = player.Character.Position.DistanceToSquared(Game.PlayerPed.Position);
+                var closeEnough = distSquared < playerNamesDistance;
+                var altHeld = IsControlPressed(0, 19);
+
+                var categoryDescription = EventManager.CharacterNames.ContainsKey(player.ServerId)
+                    ? EventManager.CharacterNames[player.ServerId]
+                    : string.Empty;
+                var tag = ExtractRosterTag(player);
+
+                string label = string.Empty;
+                if (!string.IsNullOrWhiteSpace(categoryDescription) && !string.IsNullOrWhiteSpace(tag))
+                {
+                    label = $"{categoryDescription} {tag}";
+                }
+                else if (!string.IsNullOrWhiteSpace(categoryDescription))
+                {
+                    label = categoryDescription;
+                }
+                else if (!string.IsNullOrWhiteSpace(tag))
+                {
+                    label = tag;
+                }
+
+                if (gamerTags.ContainsKey(player))
+                {
+                    if (!closeEnough || !altHeld || string.IsNullOrWhiteSpace(label))
                     {
-                        if (p != Game.Player)
+                        RemoveMpGamerTag(gamerTags[player]);
+                        gamerTags.Remove(player);
+                        gamerTagText.Remove(player);
+                    }
+                    else
+                    {
+                        if (!gamerTagText.TryGetValue(player, out var previousLabel) || !string.Equals(previousLabel, label, StringComparison.Ordinal))
                         {
-                            var dist = p.Character.Position.DistanceToSquared(Game.PlayerPed.Position);
-                            var closeEnough = dist < playerNamesDistance;
-                            if (gamerTags.ContainsKey(p))
-                            {
-                                if (!closeEnough)
-                                {
-                                    RemoveMpGamerTag(gamerTags[p]);
-                                    gamerTags.Remove(p);
-                                }
-                                else
-                                {
-                                    gamerTags[p] = CreateMpGamerTag(p.Character.Handle, p.Name + $" [{p.ServerId}]", false, false, "", 0);
-                                }
-                            }
-                            else if (closeEnough)
-                            {
-                                gamerTags.Add(p, CreateMpGamerTag(p.Character.Handle, p.Name + $" [{p.ServerId}]", false, false, "", 0));
-                            }
-                            if (closeEnough && gamerTags.ContainsKey(p))
-                            {
-                                SetMpGamerTagVisibility(gamerTags[p], 2, true); // healthArmor
-                                if (p.WantedLevel > 0)
-                                {
-                                    SetMpGamerTagVisibility(gamerTags[p], 7, true); // wantedStars
-                                    SetMpGamerTagWantedLevel(gamerTags[p], GetPlayerWantedLevel(p.Handle));
-                                }
-                                else
-                                {
-                                    SetMpGamerTagVisibility(gamerTags[p], 7, false); // wantedStars
-                                }
-                            }
+                            RemoveMpGamerTag(gamerTags[player]);
+                            var handle = CreateMpGamerTag(player.Character.Handle, label, false, false, "", 0);
+                            gamerTags[player] = handle;
+                            gamerTagText[player] = label;
+
+                            SetMpGamerTagColour(handle, 0, 13);
+                            SetMpGamerTagVisibility(handle, 2, false);
+                            SetMpGamerTagVisibility(handle, 6, false);
+                            SetMpGamerTagVisibility(handle, 7, false);
+                        }
+                        else
+                        {
+                            SetMpGamerTagColour(gamerTags[player], 0, 13);
                         }
                     }
+                }
+                else if (closeEnough && altHeld && !string.IsNullOrWhiteSpace(label))
+                {
+                    var handle = CreateMpGamerTag(player.Character.Handle, label, false, false, "", 0);
+                    gamerTags.Add(player, handle);
+                    gamerTagText[player] = label;
+
+                    SetMpGamerTagColour(handle, 0, 13);
+                    SetMpGamerTagVisibility(handle, 2, false);
+                    SetMpGamerTagVisibility(handle, 6, false);
+                    SetMpGamerTagVisibility(handle, 7, false);
+                }
+
+                if (closeEnough && altHeld && gamerTags.ContainsKey(player))
+                {
+                    SetMpGamerTagAlpha(gamerTags[player], 0, 200);
                 }
             }
         }

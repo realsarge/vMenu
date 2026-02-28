@@ -19,6 +19,7 @@ namespace vMenuClient
     public class EventManager : BaseScript
     {
         public static WeatherOptions WeatherOptionsMenu { get; private set; }
+        public static Dictionary<int, string> CharacterNames = [];
         public static bool IsSnowEnabled => GetSettingsBool(Setting.vmenu_enable_snow);
         public static int GetServerMinutes => MathUtil.Clamp(GetSettingsInt(Setting.vmenu_current_minute), 0, 59);
         public static int GetServerHours => MathUtil.Clamp(GetSettingsInt(Setting.vmenu_current_hour), 0, 23);
@@ -50,6 +51,8 @@ namespace vMenuClient
             EventHandlers.Add("playerSpawned", new Action(SetAppearanceOnFirstSpawn));
             EventHandlers.Add("vMenu:PrivateMessage", new Action<string, string>(PrivateMessage));
             EventHandlers.Add("vMenu:UpdateTeleportLocations", new Action<string>(UpdateTeleportLocations));
+            EventHandlers.Add("vMenu:SendCharacterNames", new Action<string>(SendCharacterNames));
+            EventHandlers.Add("vMenu:RefreshCharacterNames", new Action(RefreshCharacterNames));
 
             if (GetSettingsBool(Setting.vmenu_enable_weather_sync))
             {
@@ -107,6 +110,8 @@ namespace vMenuClient
                     }
 
                 }
+
+                TriggerServerEvent("vMenu:GetCharacterNames");
             }
         }
 
@@ -340,6 +345,17 @@ namespace vMenuClient
         private void NotifyPlayer(string message)
         {
             Notify.Custom(message, true, true);
+        }
+
+        private void SendCharacterNames(string gotCharacterNames)
+        {
+            CharacterNames = JsonConvert.DeserializeObject<Dictionary<int, string>>(gotCharacterNames) ?? [];
+            FunctionsController.refreshCharacterNames();
+        }
+
+        private void RefreshCharacterNames()
+        {
+            FunctionsController.refreshCharacterNames();
         }
 
         /// <summary>

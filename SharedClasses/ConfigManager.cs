@@ -45,6 +45,9 @@ namespace vMenuShared
             // MP Ped preview setting,
             vmenu_mp_ped_preview,
 
+            // Name sync settings
+            vmenu_namesync_locale,
+
             // Kick & ban settings
             vmenu_default_ban_message_information,
             vmenu_auto_ban_cheaters,

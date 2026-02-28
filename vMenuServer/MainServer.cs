@@ -822,6 +822,30 @@ namespace vMenuServer
         #endregion
 
         #region Online Players Menu Actions
+        private static Dictionary<int, string> CharacterNames = [];
+
+        [EventHandler("vMenu:UpdateCharacterNames")]
+        private void UpdateCharacterNames(int playerId, string characterName)
+        {
+            CharacterNames[playerId] = characterName ?? string.Empty;
+            BroadcastCharacterNames();
+        }
+
+        [EventHandler("vMenu:GetCharacterNames")]
+        private void GetCharacterNames()
+        {
+            BroadcastCharacterNames();
+        }
+
+        private void BroadcastCharacterNames()
+        {
+            var payload = JsonConvert.SerializeObject(CharacterNames);
+            foreach (var player in Players)
+            {
+                player.TriggerEvent("vMenu:SendCharacterNames", payload);
+            }
+        }
+
         /// <summary>
         /// Kick a specific player.
         /// </summary>
@@ -1177,6 +1201,11 @@ namespace vMenuServer
             }
 
             joinedPlayers.Remove(sourcePlayer.Handle);
+
+            if (int.TryParse(sourcePlayer.Handle, out var sourceServerId) && CharacterNames.Remove(sourceServerId))
+            {
+                BroadcastCharacterNames();
+            }
 
             string sourcePlayerName = sourcePlayer.Name;
             

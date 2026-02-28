@@ -26,6 +26,78 @@ namespace vMenuClient.menus
         readonly Menu playerMenu = new("Online Players", "Player:");
         IPlayer currentPlayer = new NativePlayer(Game.Player);
 
+        public OnlinePlayers()
+        {
+            NameMapClient.OnUpdated += () =>
+            {
+                if (menu != null)
+                {
+                    _ = UpdatePlayerlist();
+                }
+            };
+        }
+
+        private static string SanitizeForMenu(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            var chars = new char[text.Length];
+            var index = 0;
+            var inTilde = false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                var c = text[i];
+
+                if (c == '~')
+                {
+                    inTilde = !inTilde;
+                    continue;
+                }
+                if (inTilde)
+                {
+                    continue;
+                }
+
+                if (c == '^' && i + 1 < text.Length && char.IsDigit(text[i + 1]))
+                {
+                    i++;
+                    continue;
+                }
+
+                if (c < 32)
+                {
+                    continue;
+                }
+
+                if (c >= 0xD800 && c <= 0xDFFF)
+                {
+                    if ((c & 0xFC00) == 0xD800 && i + 1 < text.Length && (text[i + 1] & 0xFC00) == 0xDC00)
+                    {
+                        i++;
+                    }
+                    continue;
+                }
+
+                chars[index++] = c;
+            }
+
+            return new string(chars, 0, index);
+        }
+
+        private string ResolveDisplayName(IPlayer player)
+        {
+            if (player != null && NameMapClient.NameMap.TryGetValue(player.ServerId, out var name) && !string.IsNullOrWhiteSpace(name))
+            {
+                return name;
+            }
+
+            return player?.Name ?? "Unknown";
+        }
+
 
         /// <summary>
         /// Creates the menu.
@@ -37,6 +109,8 @@ namespace vMenuClient.menus
             {
                 CounterPreText = "Players: "
             };
+
+            NameMapClient.RequestSnapshot();
 
             MenuController.AddSubmenu(menu, playerMenu);
 
@@ -206,7 +280,7 @@ namespace vMenuClient.menus
                                 var oldBlip = GetBlipFromEntity(playerPed);
                                 SetBlipRoute(oldBlip, false);
                                 RemoveBlip(ref oldBlip);
-                                Notify.Custom($"~g~GPS route to ~s~<C>{GetSafePlayerName(currentPlayer.Name)}</C>~g~ is now disabled.");
+                                Notify.Custom($"~g~GPS route to ~s~<C>{SanitizeForMenu(ResolveDisplayName(currentPlayer))}</C>~g~ is now disabled.");
                             }
                         }
                         PlayersWaypointList.Clear();
@@ -242,7 +316,7 @@ namespace vMenuClient.menus
                             SetBlipRoute(blip, true);
 
                             PlayersWaypointList.Add(currentPlayer.ServerId);
-                            Notify.Custom($"~g~GPS route to ~s~<C>{GetSafePlayerName(currentPlayer.Name)}</C>~g~ is now active, press the ~s~Toggle GPS Route~g~ button again to disable the route.");
+                            Notify.Custom($"~g~GPS route to ~s~<C>{SanitizeForMenu(ResolveDisplayName(currentPlayer))}</C>~g~ is now active, press the ~s~Toggle GPS Route~g~ button again to disable the route.");
                         }
                         else
                         {
@@ -261,7 +335,7 @@ namespace vMenuClient.menus
                         {
                             ids += "~n~" + s;
                         }
-                        Notify.Custom($"~y~<C>{GetSafePlayerName(currentPlayer.Name)}</C>~g~'s Identifiers: {ids}", false);
+                        Notify.Custom($"~y~<C>{SanitizeForMenu(ResolveDisplayName(currentPlayer))}</C>~g~'s Identifiers: {ids}", false);
                         return data;
                     };
                     BaseScript.TriggerServerEvent("vMenu:GetPlayerIdentifiers", currentPlayer.ServerId, CallbackFunction);
@@ -309,7 +383,7 @@ namespace vMenuClient.menus
                     if (player != null)
                     {
                         currentPlayer = player;
-                        playerMenu.MenuSubtitle = $"~s~Player: ~y~{GetSafePlayerName(currentPlayer.Name)}";
+                        playerMenu.MenuSubtitle = $"~s~Player: ~y~{SanitizeForMenu(ResolveDisplayName(currentPlayer))}";
                         playerMenu.CounterPreText = $"[Server ID: ~y~{currentPlayer.ServerId}~s~] ";
                     }
                     else
@@ -328,9 +402,9 @@ namespace vMenuClient.menus
             {
                 menu.ClearMenuItems();
 
-                foreach (var p in MainMenu.PlayersList.OrderBy(a => a.Name))
+                foreach (var p in MainMenu.PlayersList.OrderBy(a => ResolveDisplayName(a)))
                 {
-                    var pItem = new MenuItem($"{GetSafePlayerName(p.Name)}", $"Click to view the options for this player. Server ID: {p.ServerId}. Local ID: {p.Handle}.")
+                    var pItem = new MenuItem($"{SanitizeForMenu(ResolveDisplayName(p))}", $"Click to view the options for this player. Server ID: {p.ServerId}. Local ID: {p.Handle}.")
                     {
                         Label = $"Server #{p.ServerId} →→→"
                     };
