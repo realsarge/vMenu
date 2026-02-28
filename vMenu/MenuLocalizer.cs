@@ -412,14 +412,27 @@ namespace vMenuClient
                 return;
             }
 
-            menu.MenuTitle = Translate(menu.MenuTitle);
-            menu.MenuSubtitle = Translate(menu.MenuSubtitle);
+            var menuTitle = menu.MenuTitle;
+            var menuSubtitle = menu.MenuSubtitle;
+            var translatedMenuTitle = Translate(menuTitle);
+            var translatedMenuSubtitle = Translate(menuSubtitle);
+            var keepDescriptions =
+                IsMpCharacterMenu(menuTitle) ||
+                IsMpCharacterMenu(menuSubtitle) ||
+                IsMpCharacterMenu(translatedMenuTitle) ||
+                IsMpCharacterMenu(translatedMenuSubtitle);
+
+            menu.MenuTitle = translatedMenuTitle;
+            menu.MenuSubtitle = translatedMenuSubtitle;
 
             foreach (var item in menu.GetMenuItems())
             {
                 item.Text = Translate(item.Text);
                 item.Label = TranslateLabel(item.Label);
-                item.Description = string.Empty;
+                if (!keepDescriptions)
+                {
+                    item.Description = string.Empty;
+                }
 
                 if (item is MenuListItem listItem)
                 {
@@ -429,6 +442,36 @@ namespace vMenuClient
                     }
                 }
             }
+        }
+
+        private static bool IsMpCharacterMenu(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+
+            return text == "MP Ped Customization" ||
+                   text == "Create A New Character" ||
+                   text == "Manage Saved Characters" ||
+                   text == "Character Inheritance Options" ||
+                   text == "Character Appearance Options" ||
+                   text == "Character Face Shape Options" ||
+                   text == "Character Tattoo Options" ||
+                   text == "Character Clothing Options" ||
+                   text == "Character Props Options" ||
+                   text == "Manage MP Character" ||
+                   text == "I get updated at runtime!" ||
+                   text == "Настройка MP-персонажа" ||
+                   text == "Создать нового персонажа" ||
+                   text == "Управление сохраненными персонажами" ||
+                   text == "Наследование персонажа" ||
+                   text == "Внешность персонажа" ||
+                   text == "Форма лица" ||
+                   text == "Татуировки" ||
+                   text == "Одежда персонажа" ||
+                   text == "Аксессуары персонажа" ||
+                   text == "Управление MP-персонажем";
         }
 
         private static string TranslateLabel(string text)
