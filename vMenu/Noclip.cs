@@ -21,13 +21,7 @@ namespace vMenuClient
         private readonly List<string> speeds = new()
         {
             "Very Slow",
-            "Slow",
-            "Normal",
-            "Fast",
-            "Very Fast",
-            "Extremely Fast",
-            "Extremely Fast v2.0",
-            "Max Speed"
+            "Slow"
         };
 
         public NoClip()
