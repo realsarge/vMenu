@@ -26,8 +26,8 @@ namespace vMenuClient
 
         private readonly List<float> speedMultipliers = new()
         {
-            0.15f,
-            0.5f
+            0.05f,
+            0.2f
         };
 
         public NoClip()
@@ -227,9 +227,8 @@ namespace vMenuClient
                 SetEntityCollision(noclipEntity, false, false);
                 SetEntityCoordsNoOffset(noclipEntity, newPos.X, newPos.Y, newPos.Z, true, true, true);
 
-                SetEntityVisible(noclipEntity, false, false);
+                SetEntityVisible(noclipEntity, true, false);
                 SetLocalPlayerVisibleLocally(true);
-                SetEntityAlpha(noclipEntity, (int)(255 * 0.2), 0);
 
                 SetEveryoneIgnorePlayer(Game.PlayerPed.Handle, true);
                 SetPoliceIgnorePlayer(Game.PlayerPed.Handle, true);
@@ -240,15 +239,12 @@ namespace vMenuClient
                 SetEntityInvincible(noclipEntity, false);
                 SetEntityCollision(noclipEntity, true, true);
 
-                // If the player is not set as invisible by PlayerOptions or if the noclip entity is not the player ped, reset the visibility
-                if (MainMenu.PlayerOptionsMenu == null || !MainMenu.PlayerOptionsMenu.PlayerInvisible || (MainMenu.PlayerOptionsMenu.PlayerInvisible && noclipEntity == Game.PlayerPed.Handle))
+                // Keep noclip entities visible unless the player explicitly enabled invisibility.
+                if (MainMenu.PlayerOptionsMenu == null || !MainMenu.PlayerOptionsMenu.PlayerInvisible || noclipEntity != Game.PlayerPed.Handle)
                 {
                     SetEntityVisible(noclipEntity, true, false);
                     SetLocalPlayerVisibleLocally(true);
                 }
-
-                // Always reset the alpha.
-                ResetEntityAlpha(noclipEntity);
 
                 SetEveryoneIgnorePlayer(Game.PlayerPed.Handle, false);
                 SetPoliceIgnorePlayer(Game.PlayerPed.Handle, false);
