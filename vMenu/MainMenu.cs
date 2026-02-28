@@ -61,6 +61,7 @@ namespace vMenuClient
         public static bool MenuEnabled { get; private set; } = true;
 
         private const int currentCleanupVersion = 2;
+        private static int nextLocalizationPass = 0;
         #endregion
 
         /// <summary>
@@ -487,6 +488,7 @@ namespace vMenuClient
 
             // Create all (sub)menus.
             CreateSubmenus();
+            MenuLocalizer.LocalizeAllMenus();
 
             if (!GetSettingsBool(Setting.vmenu_disable_player_stats_setup))
             {
@@ -537,6 +539,12 @@ namespace vMenuClient
             // If the setup (permissions) is done, and it's not the first tick, then do this:
             if (ConfigOptionsSetupComplete)
             {
+                if (GetGameTimer() >= nextLocalizationPass)
+                {
+                    MenuLocalizer.LocalizeAllMenus();
+                    nextLocalizationPass = GetGameTimer() + 500;
+                }
+
                 #region Handle Opening/Closing of the menu.
                 var tmpMenu = GetOpenMenu();
                 if (MpPedCustomizationMenu != null)
