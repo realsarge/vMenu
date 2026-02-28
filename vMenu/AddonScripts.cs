@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 
 using CitizenFX.Core;
 
@@ -35,28 +34,30 @@ namespace vMenuClient
             menu.AddMenuItem(deleteSpawnerObject);
             menu.AddMenuItem(trafficMenu);
 
-            menu.OnItemSelect += async (sender, item, index) =>
+            menu.OnItemSelect += (sender, item, index) =>
             {
                 if (item == policeRadar)
                 {
-                    await LaunchExternalMenuAsync(() => TriggerEvent("wk:openRemote"));
+                    LaunchExternalMenu(() => TriggerEvent("wk:openRemote"));
                 }
                 else if (item == heliWinch)
                 {
-                    await LaunchExternalMenuAsync(() => TriggerEvent("heliwinch:openmenu"));
+                    LaunchExternalMenu(() => TriggerEvent("heliwinch:openmenu"));
                 }
                 else if (item == k9Menu)
                 {
-                    await LaunchExternalMenuAsync(() => TriggerEvent("k9Menu: OpenMenu"));
+                    LaunchExternalMenu(() => TriggerEvent("k9Menu: OpenMenu"));
                 }
                 else if (item == worldSpawner)
                 {
-                    await LaunchExternalMenuAsync(() => ExecuteCommand("spawner w"),
+                    LaunchExternalMenu(
+                        () => ExecuteCommand("spawner w"),
                         "Управление наклоном: NumPad, положением: стрелки, установить объект: Space или Enter, выйти: Del. Пропы: https://gtahash.ru/");
                 }
                 else if (item == vehicleSpawner)
                 {
-                    await LaunchExternalMenuAsync(() => ExecuteCommand("spawner v"),
+                    LaunchExternalMenu(
+                        () => ExecuteCommand("spawner v"),
                         "Управление положением: NumPad, установить объект: Space или Enter, выйти: Del.");
                 }
                 else if (item == deleteSpawnerObject)
@@ -65,13 +66,14 @@ namespace vMenuClient
                 }
                 else if (item == trafficMenu)
                 {
-                    await LaunchExternalMenuAsync(() => ExecuteCommand("traffic"),
+                    LaunchExternalMenu(
+                        () => ExecuteCommand("traffic"),
                         "Управление: E, X, Del.");
                 }
             };
         }
 
-        private async Task LaunchExternalMenuAsync(Action openAction, string helpText = null)
+        private void LaunchExternalMenu(Action openAction, string helpText = null)
         {
             if (scriptLaunchInProgress)
             {
@@ -79,33 +81,32 @@ namespace vMenuClient
             }
 
             scriptLaunchInProgress = true;
-            try
+            MenuController.CloseAllMenus();
+
+            BaseScript.Delay(150).GetAwaiter().OnCompleted(() =>
             {
-                MenuController.CloseAllMenus();
-
-                for (var i = 0; i < 20 && MenuController.IsAnyMenuOpen(); i++)
+                try
                 {
-                    await BaseScript.Delay(0);
-                }
+                    openAction?.Invoke();
 
-                await BaseScript.Delay(150);
-                openAction?.Invoke();
-
-                if (!string.IsNullOrWhiteSpace(helpText))
-                {
-                    TriggerEvent("chat:addMessage", new
+                    if (!string.IsNullOrWhiteSpace(helpText))
                     {
-                        templateId = "ccChat",
-                        multiline = false,
-                        args = new[] { "#9c27b0", "fa-solid fa-m", "Меню", "", helpText, "1.0" }
+                        TriggerEvent("chat:addMessage", new
+                        {
+                            templateId = "ccChat",
+                            multiline = false,
+                            args = new[] { "#9c27b0", "fa-solid fa-m", "Меню", "", helpText, "1.0" }
+                        });
+                    }
+                }
+                finally
+                {
+                    BaseScript.Delay(250).GetAwaiter().OnCompleted(() =>
+                    {
+                        scriptLaunchInProgress = false;
                     });
                 }
-            }
-            finally
-            {
-                await BaseScript.Delay(250);
-                scriptLaunchInProgress = false;
-            }
+            });
         }
 
         public Menu GetMenu()
