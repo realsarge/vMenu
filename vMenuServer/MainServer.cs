@@ -238,6 +238,7 @@ namespace vMenuServer
                     });
                     CallbackFunction(JsonConvert.SerializeObject(data));
                 }));
+                EventHandlers.Add("vMenu:RequestFitPresets", new Action<Player>(OnRequestFitPresets));
 
                 // check addons file for errors
                 var addons = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
@@ -1150,7 +1151,7 @@ namespace vMenuServer
                 joinedPlayers.Add(player.Handle);
 
                 PermissionsManager.SetPermissionsForPlayer(player);
-                player.TriggerEvent("vMenu:SetFitPresets", FitPresetsJson);
+                SendFitPresetsToPlayer(player);
             }
         }
 
@@ -1160,7 +1161,7 @@ namespace vMenuServer
             joinedPlayers.Add(sourcePlayer.Handle);
 
             PermissionsManager.SetPermissionsForPlayer(sourcePlayer);
-            sourcePlayer.TriggerEvent("vMenu:SetFitPresets", FitPresetsJson);
+            SendFitPresetsToPlayer(sourcePlayer);
 
             string sourcePlayerName = sourcePlayer.Name;
 
@@ -1195,9 +1196,30 @@ namespace vMenuServer
         #endregion
 
         #region Utilities
+        private static void SendFitPresetsToPlayer(Player player)
+        {
+            if (player == null)
+            {
+                return;
+            }
+
+            player.TriggerEvent("vMenu:SetFitPresets", FitPresetsJson);
+        }
+
+        private void OnRequestFitPresets([FromSource] Player sourcePlayer)
+        {
+            SendFitPresetsToPlayer(sourcePlayer);
+        }
+
         private static void LoadFitPresets()
         {
-            var fitPresetFile = LoadResourceFile(GetCurrentResourceName(), FitPresetsConfigPath) ?? "{ \"presets\": [] }";
+            var fitPresetFile = LoadResourceFile(GetCurrentResourceName(), FitPresetsConfigPath);
+            if (fitPresetFile == null)
+            {
+                FitPresetsJson = "[]";
+                Debug.WriteLine($"^3[vMenu] [WARNING]^7 {FitPresetsConfigPath} was not found in the running resource.");
+                return;
+            }
 
             try
             {
@@ -1259,8 +1281,50 @@ namespace vMenuServer
         {
             errorMessage = null;
 
-            var components = new HashSet<int>();
-            foreach (var rawEntry in fitCode.Split(','))
+            if (string.IsNullOrWhiteSpace(fitCode))
+            {
+                errorMessage = "Fit code is empty.";
+                return false;
+            }
+
+            var sections = fitCode.Split(';');
+            if (sections.Length > 2)
+            {
+                errorMessage = "Fit code contains too many sections.";
+                return false;
+            }
+
+            var hasEntries = false;
+            if (!ValidateFitCodeSection(sections[0], false, out var sectionHasEntries, out errorMessage))
+            {
+                return false;
+            }
+            hasEntries |= sectionHasEntries;
+
+            if (sections.Length == 2)
+            {
+                if (!ValidateFitCodeSection(sections[1], true, out sectionHasEntries, out errorMessage))
+                {
+                    return false;
+                }
+                hasEntries |= sectionHasEntries;
+            }
+
+            if (!hasEntries)
+            {
+                errorMessage = "Fit code does not contain any valid outfit entries.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ValidateFitCodeSection(string fitSection, bool isPropSection, out bool hasEntries, out string errorMessage)
+        {
+            hasEntries = false;
+            errorMessage = null;
+
+            foreach (var rawEntry in fitSection.Split(','))
             {
                 var entry = rawEntry.Trim();
                 if (string.IsNullOrWhiteSpace(entry))
@@ -1270,7 +1334,7 @@ namespace vMenuServer
 
                 var parts = entry.Split(':');
                 if (parts.Length != 3
-                    || !int.TryParse(parts[0], out var componentId)
+                    || !int.TryParse(parts[0], out var slotId)
                     || !int.TryParse(parts[1], out var drawable)
                     || !int.TryParse(parts[2], out var texture))
                 {
@@ -1278,25 +1342,36 @@ namespace vMenuServer
                     return false;
                 }
 
-                if (componentId < 0 || componentId > 11)
+                if (isPropSection)
                 {
-                    errorMessage = $"Unsupported component id '{componentId}'.";
-                    return false;
+                    if (slotId < 0 || slotId > 7)
+                    {
+                        errorMessage = $"Unsupported prop id '{slotId}'.";
+                        return false;
+                    }
+
+                    if (drawable < -1 || texture < -1)
+                    {
+                        errorMessage = $"Prop drawable and texture must be -1 or greater in '{entry}'.";
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (slotId < 0 || slotId > 11)
+                    {
+                        errorMessage = $"Unsupported component id '{slotId}'.";
+                        return false;
+                    }
+
+                    if (drawable < 0 || texture < 0)
+                    {
+                        errorMessage = $"Drawable and texture must be non-negative in '{entry}'.";
+                        return false;
+                    }
                 }
 
-                if (drawable < 0 || texture < 0)
-                {
-                    errorMessage = $"Drawable and texture must be non-negative in '{entry}'.";
-                    return false;
-                }
-
-                components.Add(componentId);
-            }
-
-            if (components.Count == 0)
-            {
-                errorMessage = "Fit code does not contain any valid clothing components.";
-                return false;
+                hasEntries = true;
             }
 
             return true;

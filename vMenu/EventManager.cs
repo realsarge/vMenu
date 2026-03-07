@@ -122,6 +122,7 @@ namespace vMenuClient
         {
             SetAddons();
             SetExtras();
+            TriggerServerEvent("vMenu:RequestFitPresets");
 
             MainMenu.ConfigOptionsSetupComplete = true;
         }

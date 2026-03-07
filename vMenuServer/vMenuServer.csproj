@@ -32,9 +32,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="config\*.*">
+    <Content Include="config\**\*.*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    </Content>
     <None Update="storage.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

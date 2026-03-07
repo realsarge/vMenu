@@ -30,7 +30,9 @@ namespace vMenuClient.menus
 
         private const string FitClipboardKvp = "vmenu_fit_clipboard";
         private static readonly int[] FitExportComponentIds = { 1, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+        private static readonly int[] FitExportPropIds = { 0, 1, 2, 6, 7 };
         private static List<ServerFitPreset> serverFitPresets = new List<ServerFitPreset>();
+        private static bool requestedServerFitPresets;
 
         // Variables
         private Menu menu;
@@ -45,7 +47,7 @@ namespace vMenuClient.menus
         public Menu propsMenu = new("vMenu", "Character Props Options");
         public Menu fitPresetsMenu = new("vMenu", "Outfit Presets");
         private readonly Menu manageSavedCharacterMenu = new("vMenu", "Manage MP Character");
-        private readonly MenuItem applyFitPresetButton = new("Apply Outfit Preset", "Apply a server-configured outfit preset to this character.") { Label = "→→→" };
+        private readonly MenuItem applyFitPresetMainButton = new("Apply Outfit Preset", "Apply a server-configured outfit preset to this character.") { Label = "→→→" };
 
         // Need to be able to disable/enable these buttons from another class.
         internal MenuItem createMaleBtn = new("Create Male Character", "Create a new male character.") { Label = "→→→" };
@@ -159,6 +161,35 @@ namespace vMenuClient.menus
             {
                 serverFitPresets = new List<ServerFitPreset>();
             }
+
+            requestedServerFitPresets = false;
+            MainMenu.MpPedCustomizationMenu?.HandleServerFitPresetsUpdated();
+        }
+
+        private static void RequestServerFitPresets()
+        {
+            if (requestedServerFitPresets)
+            {
+                return;
+            }
+
+            requestedServerFitPresets = true;
+            TriggerServerEvent("vMenu:RequestFitPresets");
+        }
+
+        private static string GetFitPresetModelName(uint modelHash)
+        {
+            if (modelHash == (uint)GetHashKey("mp_f_freemode_01"))
+            {
+                return "mp_f_freemode_01";
+            }
+
+            if (modelHash == (uint)GetHashKey("mp_m_freemode_01"))
+            {
+                return "mp_m_freemode_01";
+            }
+
+            return null;
         }
 
         private static bool FitPresetSupportsModel(ServerFitPreset preset, uint modelHash)
@@ -168,13 +199,18 @@ namespace vMenuClient.menus
                 return true;
             }
 
-            var modelName = modelHash == (uint)GetHashKey("mp_f_freemode_01") ? "mp_f_freemode_01" : "mp_m_freemode_01";
-            return preset.models.Any(m => string.Equals(m?.Trim(), modelName, StringComparison.OrdinalIgnoreCase));
+            var modelName = GetFitPresetModelName(modelHash);
+            return modelName != null && preset.models.Any(m => string.Equals(m?.Trim(), modelName, StringComparison.OrdinalIgnoreCase));
         }
 
         private void RefreshFitPresetsMenu()
         {
             fitPresetsMenu.ClearMenuItems();
+
+            if (serverFitPresets.Count == 0)
+            {
+                RequestServerFitPresets();
+            }
 
             var currentModelHash = currentCharacter.ModelHash != 0 ? currentCharacter.ModelHash : (uint)GetEntityModel(Game.PlayerPed.Handle);
             var visiblePresets = serverFitPresets
@@ -184,22 +220,26 @@ namespace vMenuClient.menus
 
             if (visiblePresets.Count == 0)
             {
-                fitPresetsMenu.AddMenuItem(new MenuItem("No Presets Configured", "No matching server fit presets were found for this freemode model.")
+                var emptyDescription = serverFitPresets.Count == 0
+                    ? "No server fit presets have been received yet. If presets are configured, reopen this menu in a moment."
+                    : "No matching server fit presets were found for this freemode model.";
+
+                fitPresetsMenu.AddMenuItem(new MenuItem("No Presets Configured", emptyDescription)
                 {
                     Enabled = false,
                     LeftIcon = MenuItem.Icon.INFO
                 });
 
-                applyFitPresetButton.Enabled = false;
-                applyFitPresetButton.LeftIcon = MenuItem.Icon.LOCK;
-                applyFitPresetButton.Description = "No matching server fit presets are configured for this freemode model.";
+                applyFitPresetMainButton.Enabled = false;
+                applyFitPresetMainButton.LeftIcon = MenuItem.Icon.INFO;
+                applyFitPresetMainButton.Description = emptyDescription;
                 fitPresetsMenu.RefreshIndex();
                 return;
             }
 
-            applyFitPresetButton.Enabled = true;
-            applyFitPresetButton.LeftIcon = MenuItem.Icon.NONE;
-            applyFitPresetButton.Description = "Apply a server-configured outfit preset to this character.";
+            applyFitPresetMainButton.Enabled = true;
+            applyFitPresetMainButton.LeftIcon = MenuItem.Icon.NONE;
+            applyFitPresetMainButton.Description = "Apply a server-configured outfit preset to this character.";
 
             foreach (var preset in visiblePresets)
             {
@@ -210,6 +250,11 @@ namespace vMenuClient.menus
             }
 
             fitPresetsMenu.RefreshIndex();
+        }
+
+        public void HandleServerFitPresetsUpdated()
+        {
+            RefreshFitPresetsMenu();
         }
 
         /// <summary>
@@ -689,7 +734,6 @@ namespace vMenuClient.menus
             #endregion
 
             RefreshFitPresetsMenu();
-            clothesMenu.AddMenuItem(applyFitPresetButton);
 
             #region face features menu
             foreach (MenuSliderItem item in faceShapeMenu.GetMenuItems())
@@ -1246,6 +1290,7 @@ namespace vMenuClient.menus
             createCharacterMenu.AddMenuItem(tattoosButton);
             createCharacterMenu.AddMenuItem(clothesButton);
             createCharacterMenu.AddMenuItem(propsButton);
+            createCharacterMenu.AddMenuItem(applyFitPresetMainButton);
             createCharacterMenu.AddMenuItem(faceExpressionList);
             createCharacterMenu.AddMenuItem(categoryBtn);
             createCharacterMenu.AddMenuItem(copyFitCodeButton);
@@ -1258,15 +1303,15 @@ namespace vMenuClient.menus
             MenuController.BindMenuItem(createCharacterMenu, tattoosMenu, tattoosButton);
             MenuController.BindMenuItem(createCharacterMenu, clothesMenu, clothesButton);
             MenuController.BindMenuItem(createCharacterMenu, propsMenu, propsButton);
-            MenuController.BindMenuItem(clothesMenu, fitPresetsMenu, applyFitPresetButton);
+            MenuController.BindMenuItem(createCharacterMenu, fitPresetsMenu, applyFitPresetMainButton);
 
+            createCharacterMenu.OnMenuOpen += _ => RefreshFitPresetsMenu();
             fitPresetsMenu.OnMenuOpen += _ => RefreshFitPresetsMenu();
             fitPresetsMenu.OnItemSelect += (_, item, __) =>
             {
                 if (item.ItemData is ServerFitPreset preset)
                 {
                     ApplyFitCode(preset.fitCode);
-                    fitPresetsMenu.GoBack();
                 }
             };
 
@@ -2550,18 +2595,18 @@ namespace vMenuClient.menus
                 return;
             }
 
-            if (!TryParseFitCode(fitCode, out var components, out var errorMessage))
+            if (!TryParseFitCode(fitCode, out var components, out var props, out var errorMessage))
             {
                 Notify.Error(errorMessage);
                 return;
             }
 
-            ApplyFitComponentsToPed(components, Game.PlayerPed.Handle);
-            UpdateCurrentCharacterFitState(components);
+            ApplyFitComponentsToPed(components, props, Game.PlayerPed.Handle);
+            UpdateCurrentCharacterFitState(components, props);
             Notify.Success("Fit applied.");
         }
 
-        private void UpdateCurrentCharacterFitState(Dictionary<int, KeyValuePair<int, int>> components)
+        private void UpdateCurrentCharacterFitState(Dictionary<int, KeyValuePair<int, int>> components, Dictionary<int, KeyValuePair<int, int>> props)
         {
             if (currentCharacter.ModelHash == 0)
             {
@@ -2581,6 +2626,15 @@ namespace vMenuClient.menus
                     _hairSelection = entry.Value.Key;
                 }
             }
+
+            if (currentCharacter.PropVariations.props == null)
+            {
+                currentCharacter.PropVariations.props = new Dictionary<int, KeyValuePair<int, int>>();
+            }
+            foreach (var entry in props)
+            {
+                currentCharacter.PropVariations.props[entry.Key] = entry.Value;
+            }
         }
 
         private static bool IsSupportedFitModel(uint modelHash)
@@ -2590,13 +2644,22 @@ namespace vMenuClient.menus
 
         private static string BuildCurrentFitCode(int handle)
         {
-            return string.Join(",", FitExportComponentIds.Select(componentId =>
+            var clothingCode = string.Join(",", FitExportComponentIds.Select(componentId =>
                 $"{componentId}:{GetPedDrawableVariation(handle, componentId)}:{GetPedTextureVariation(handle, componentId)}"));
+            var propCode = string.Join(",", FitExportPropIds.Select(propId =>
+            {
+                var drawable = GetPedPropIndex(handle, propId);
+                var texture = drawable > -1 ? GetPedPropTextureIndex(handle, propId) : -1;
+                return $"{propId}:{drawable}:{texture}";
+            }));
+
+            return string.IsNullOrWhiteSpace(propCode) ? clothingCode : $"{clothingCode};{propCode}";
         }
 
-        private static bool TryParseFitCode(string fitCode, out Dictionary<int, KeyValuePair<int, int>> components, out string errorMessage)
+        private static bool TryParseFitCode(string fitCode, out Dictionary<int, KeyValuePair<int, int>> components, out Dictionary<int, KeyValuePair<int, int>> props, out string errorMessage)
         {
             components = new Dictionary<int, KeyValuePair<int, int>>();
+            props = new Dictionary<int, KeyValuePair<int, int>>();
             errorMessage = "Invalid fit code.";
 
             if (string.IsNullOrWhiteSpace(fitCode))
@@ -2605,7 +2668,37 @@ namespace vMenuClient.menus
                 return false;
             }
 
-            foreach (var rawEntry in fitCode.Split(','))
+            var sections = fitCode.Split(';');
+            if (sections.Length > 2)
+            {
+                errorMessage = "Fit code contains too many sections.";
+                return false;
+            }
+
+            if (!TryParseFitEntries(sections[0], false, components, out errorMessage))
+            {
+                return false;
+            }
+
+            if (sections.Length == 2 && !TryParseFitEntries(sections[1], true, props, out errorMessage))
+            {
+                return false;
+            }
+
+            if (components.Count == 0 && props.Count == 0)
+            {
+                errorMessage = "Fit code does not contain any outfit data.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool TryParseFitEntries(string fitSection, bool isPropSection, Dictionary<int, KeyValuePair<int, int>> target, out string errorMessage)
+        {
+            errorMessage = "Invalid fit code.";
+
+            foreach (var rawEntry in fitSection.Split(','))
             {
                 var entry = rawEntry.Trim();
                 if (string.IsNullOrWhiteSpace(entry))
@@ -2615,7 +2708,7 @@ namespace vMenuClient.menus
 
                 var parts = entry.Split(':');
                 if (parts.Length != 3
-                    || !int.TryParse(parts[0], out var componentId)
+                    || !int.TryParse(parts[0], out var slotId)
                     || !int.TryParse(parts[1], out var drawable)
                     || !int.TryParse(parts[2], out var texture))
                 {
@@ -2623,35 +2716,58 @@ namespace vMenuClient.menus
                     return false;
                 }
 
-                if (componentId < 0 || componentId > 11)
+                if (isPropSection)
                 {
-                    errorMessage = $"Unsupported component id: {componentId}";
-                    return false;
+                    if (slotId < 0 || slotId > 7)
+                    {
+                        errorMessage = $"Unsupported prop id: {slotId}";
+                        return false;
+                    }
+
+                    if (drawable < -1 || texture < -1)
+                    {
+                        errorMessage = $"Prop drawable and texture must be -1 or greater: {entry}";
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (slotId < 0 || slotId > 11)
+                    {
+                        errorMessage = $"Unsupported component id: {slotId}";
+                        return false;
+                    }
+
+                    if (drawable < 0 || texture < 0)
+                    {
+                        errorMessage = $"Drawable and texture must be non-negative: {entry}";
+                        return false;
+                    }
                 }
 
-                if (drawable < 0 || texture < 0)
-                {
-                    errorMessage = $"Drawable and texture must be non-negative: {entry}";
-                    return false;
-                }
-
-                components[componentId] = new KeyValuePair<int, int>(drawable, texture);
-            }
-
-            if (components.Count == 0)
-            {
-                errorMessage = "Fit code does not contain any clothing components.";
-                return false;
+                target[slotId] = new KeyValuePair<int, int>(drawable, texture);
             }
 
             return true;
         }
 
-        private static void ApplyFitComponentsToPed(Dictionary<int, KeyValuePair<int, int>> components, int pedHandle)
+        private static void ApplyFitComponentsToPed(Dictionary<int, KeyValuePair<int, int>> components, Dictionary<int, KeyValuePair<int, int>> props, int pedHandle)
         {
             foreach (var component in components.OrderBy(entry => entry.Key))
             {
                 SetPedComponentVariation(pedHandle, component.Key, component.Value.Key, component.Value.Value, 0);
+            }
+
+            foreach (var prop in props.OrderBy(entry => entry.Key))
+            {
+                if (prop.Value.Key < 0)
+                {
+                    ClearPedProp(pedHandle, prop.Key);
+                    continue;
+                }
+
+                var textureIndex = prop.Value.Value > -1 ? prop.Value.Value : 0;
+                SetPedPropIndex(pedHandle, prop.Key, prop.Value.Key, textureIndex, true);
             }
         }
 
