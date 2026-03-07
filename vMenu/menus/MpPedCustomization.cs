@@ -44,11 +44,12 @@ namespace vMenuClient.menus
         // Need to be editable from other functions
         private readonly MenuListItem setCategoryBtn = new("Set Character Category", new List<string> { }, 0, "Sets this character's category. Select to save.");
         private readonly MenuListItem categoryBtn = new("Character Category", new List<string> { }, 0, "Sets this character's category.");
-
         public static bool DontCloseMenus { get { return MenuController.PreventExitingMenu; } set { MenuController.PreventExitingMenu = value; } }
         public static bool DisableBackButton { get { return MenuController.DisableBackButton; } set { MenuController.DisableBackButton = value; } }
         string selectedSavedCharacterManageName = "";
         private bool isEdidtingPed = false;
+        private MenuListItem currentClothingListItem;
+        private MenuListItem currentPropListItem;
         private readonly List<string> facial_expressions = new() { "mood_Normal_1", "mood_Happy_1", "mood_Angry_1", "mood_Aiming_1", "mood_Injured_1", "mood_stressed_1", "mood_smug_1", "mood_sulk_1", };
 
         private readonly List<string> parents = [];
@@ -570,7 +571,7 @@ namespace vMenuClient.menus
 
                     var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, i, currentVariationIndex);
 
-                    var listItem = new MenuListItem(clothingCategoryNames[i], items, currentVariationIndex, $"Select a drawable using the arrow keys and press ~o~enter~s~ to cycle through all available textures. Currently selected texture: #{currentVariationTextureIndex + 1} (of {maxTextures}).");
+                    var listItem = new MenuListItem(clothingCategoryNames[i], items, currentVariationIndex, $"Select a drawable using the arrow keys, press ~g~C~s~ to enter an exact drawable index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{currentVariationTextureIndex + 1} (of {maxTextures}).");
                     clothesMenu.AddMenuItem(listItem);
                 }
             }
@@ -600,12 +601,12 @@ namespace vMenuClient.menus
                 if (GetPedPropIndex(Game.PlayerPed.Handle, propId) != -1)
                 {
                     var maxPropTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propId, currentProp);
-                    var propListItem = new MenuListItem($"{propNames[x]}", propsList, currentProp, $"Select a prop using the arrow keys and press ~o~enter~s~ to cycle through all available textures. Currently selected texture: #{currentPropTexture + 1} (of {maxPropTextures}).");
+                    var propListItem = new MenuListItem($"{propNames[x]}", propsList, currentProp, $"Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{currentPropTexture + 1} (of {maxPropTextures}).");
                     propsMenu.AddMenuItem(propListItem);
                 }
                 else
                 {
-                    var propListItem = new MenuListItem($"{propNames[x]}", propsList, currentProp, "Select a prop using the arrow keys and press ~o~enter~s~ to cycle through all available textures.");
+                    var propListItem = new MenuListItem($"{propNames[x]}", propsList, currentProp, "Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.");
                     propsMenu.AddMenuItem(propListItem);
                 }
 
@@ -792,6 +793,159 @@ namespace vMenuClient.menus
             tattoosMenu.RefreshIndex();
         }
 
+        private static int GetClothingComponentIndex(int realIndex)
+        {
+            var componentIndex = realIndex + 1;
+            if (realIndex > 0)
+            {
+                componentIndex += 1;
+            }
+
+            return componentIndex;
+        }
+
+        private static int GetPropComponentIndex(int realIndex)
+        {
+            if (realIndex == 3)
+            {
+                return 6;
+            }
+
+            if (realIndex == 4)
+            {
+                return 7;
+            }
+
+            return realIndex;
+        }
+
+        private void UpdateClothingTarget(MenuItem item)
+        {
+            if (item is MenuListItem listItem)
+            {
+                currentClothingListItem = listItem;
+            }
+        }
+
+        private void UpdatePropTarget(MenuItem item)
+        {
+            if (item is MenuListItem listItem)
+            {
+                currentPropListItem = listItem;
+            }
+        }
+
+        private void ApplyClothingSelection(MenuListItem listItem, int realIndex, int drawableIndex, int textureIndex)
+        {
+            var componentIndex = GetClothingComponentIndex(realIndex);
+            SetPedComponentVariation(Game.PlayerPed.Handle, componentIndex, drawableIndex, textureIndex, 0);
+
+            currentCharacter.DrawableVariations.clothes ??= new Dictionary<int, KeyValuePair<int, int>>();
+            currentCharacter.DrawableVariations.clothes[componentIndex] = new KeyValuePair<int, int>(drawableIndex, textureIndex);
+
+            listItem.ListIndex = drawableIndex;
+
+            var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, componentIndex, drawableIndex);
+            listItem.Description = $"Select a drawable using the arrow keys, press ~g~C~s~ to enter an exact drawable index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
+        }
+
+        private void ApplyPropSelection(MenuListItem listItem, int realIndex, int propDrawableIndex, int textureIndex)
+        {
+            var propIndex = GetPropComponentIndex(realIndex);
+            var propCount = GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propIndex);
+
+            currentCharacter.PropVariations.props ??= new Dictionary<int, KeyValuePair<int, int>>();
+
+            if (propDrawableIndex < 0)
+            {
+                SetPedPropIndex(Game.PlayerPed.Handle, propIndex, -1, -1, false);
+                ClearPedProp(Game.PlayerPed.Handle, propIndex);
+                currentCharacter.PropVariations.props[propIndex] = new KeyValuePair<int, int>(-1, -1);
+                listItem.ListIndex = propCount;
+                listItem.Description = "Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.";
+                return;
+            }
+
+            SetPedPropIndex(Game.PlayerPed.Handle, propIndex, propDrawableIndex, textureIndex, true);
+            currentCharacter.PropVariations.props[propIndex] = new KeyValuePair<int, int>(propDrawableIndex, textureIndex);
+            listItem.ListIndex = propDrawableIndex;
+
+            if (GetPedPropIndex(Game.PlayerPed.Handle, propIndex) == -1)
+            {
+                listItem.Description = "Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.";
+                return;
+            }
+
+            var maxPropTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propIndex, propDrawableIndex);
+            listItem.Description = $"Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxPropTextures}).";
+        }
+
+        private async Task SetExactClothingDrawableAsync()
+        {
+            if (currentClothingListItem == null)
+            {
+                Notify.Error("Select a clothing field first.");
+                return;
+            }
+
+            var realIndex = clothesMenu.GetMenuItems().IndexOf(currentClothingListItem);
+            if (realIndex < 0)
+            {
+                Notify.Error("Select a clothing field first.");
+                return;
+            }
+
+            var componentIndex = GetClothingComponentIndex(realIndex);
+            var maxDrawables = GetNumberOfPedDrawableVariations(Game.PlayerPed.Handle, componentIndex) - 1;
+            var currentDrawable = GetPedDrawableVariation(Game.PlayerPed.Handle, componentIndex);
+            var exactDrawable = await GetBoundedIntegerInput($"{currentClothingListItem.Text} drawable (0-{maxDrawables})", currentDrawable, 0, maxDrawables);
+            if (!exactDrawable.HasValue)
+            {
+                return;
+            }
+
+            ApplyClothingSelection(currentClothingListItem, realIndex, exactDrawable.Value, 0);
+        }
+
+        private async Task SetExactPropDrawableAsync()
+        {
+            if (currentPropListItem == null)
+            {
+                Notify.Error("Select a prop field first.");
+                return;
+            }
+
+            var realIndex = propsMenu.GetMenuItems().IndexOf(currentPropListItem);
+            if (realIndex < 0)
+            {
+                Notify.Error("Select a prop field first.");
+                return;
+            }
+
+            var propIndex = GetPropComponentIndex(realIndex);
+            var maxProps = GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propIndex) - 1;
+            var currentProp = GetPedPropIndex(Game.PlayerPed.Handle, propIndex);
+            var defaultProp = currentProp < 0 ? -1 : currentProp;
+            var exactProp = await GetBoundedIntegerInput($"{currentPropListItem.Text} prop (-1-{maxProps})", defaultProp, -1, maxProps);
+            if (!exactProp.HasValue)
+            {
+                return;
+            }
+
+            ApplyPropSelection(currentPropListItem, realIndex, exactProp.Value, exactProp.Value < 0 ? -1 : 0);
+        }
+        public async Task PromptExactActiveItemAsync()
+        {
+            if (clothesMenu.Visible)
+            {
+                await SetExactClothingDrawableAsync();
+            }
+            else if (propsMenu.Visible)
+            {
+                await SetExactPropDrawableAsync();
+            }
+        }
+
         /// <summary>
         /// Saves the mp character and quits the editor if successful.
         /// </summary>
@@ -961,6 +1115,9 @@ namespace vMenuClient.menus
             tattoosMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
             clothesMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
             propsMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
+
+            clothesMenu.InstructionalButtons.Add(Control.LookBehind, "Exact Item");
+            propsMenu.InstructionalButtons.Add(Control.LookBehind, "Exact Item");
 
             createCharacterMenu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");
             inheritanceMenu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");
@@ -1387,120 +1544,53 @@ namespace vMenuClient.menus
             #region clothes
             clothesMenu.OnListIndexChange += (_menu, listItem, oldSelectionIndex, newSelectionIndex, realIndex) =>
             {
-                var componentIndex = realIndex + 1;
-                if (realIndex > 0)
-                {
-                    componentIndex += 1;
-                }
-
-                var textureIndex = GetPedTextureVariation(Game.PlayerPed.Handle, componentIndex);
-                var newTextureIndex = 0;
-                SetPedComponentVariation(Game.PlayerPed.Handle, componentIndex, newSelectionIndex, newTextureIndex, 0);
-                currentCharacter.DrawableVariations.clothes ??= new Dictionary<int, KeyValuePair<int, int>>();
-
-                var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, componentIndex, newSelectionIndex);
-
-                currentCharacter.DrawableVariations.clothes[componentIndex] = new KeyValuePair<int, int>(newSelectionIndex, newTextureIndex);
-                listItem.Description = $"Select a drawable using the arrow keys and press ~o~enter~s~ to cycle through all available textures. Currently selected texture: #{newTextureIndex + 1} (of {maxTextures}).";
+                ApplyClothingSelection(listItem, realIndex, newSelectionIndex, 0);
             };
 
             clothesMenu.OnListItemSelect += (sender, listItem, listIndex, realIndex) =>
             {
-                var componentIndex = realIndex + 1; // skip face options as that fucks up with inheritance faces
-                if (realIndex > 0) // skip hair features as that is done in the appeareance menu
-                {
-                    componentIndex += 1;
-                }
-
+                var componentIndex = GetClothingComponentIndex(realIndex);
                 var textureIndex = GetPedTextureVariation(Game.PlayerPed.Handle, componentIndex);
                 var newTextureIndex = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, componentIndex, listIndex) - 1 < textureIndex + 1 ? 0 : textureIndex + 1;
-                SetPedComponentVariation(Game.PlayerPed.Handle, componentIndex, listIndex, newTextureIndex, 0);
-                currentCharacter.DrawableVariations.clothes ??= new Dictionary<int, KeyValuePair<int, int>>();
+                ApplyClothingSelection(listItem, realIndex, listIndex, newTextureIndex);
+            };
 
-                var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, componentIndex, listIndex);
-
-                currentCharacter.DrawableVariations.clothes[componentIndex] = new KeyValuePair<int, int>(listIndex, newTextureIndex);
-                listItem.Description = $"Select a drawable using the arrow keys and press ~o~enter~s~ to cycle through all available textures. Currently selected texture: #{newTextureIndex + 1} (of {maxTextures}).";
+            clothesMenu.OnIndexChange += (_, _, newItem, _, _) => UpdateClothingTarget(newItem);
+            clothesMenu.OnMenuOpen += sender =>
+            {
+                currentClothingListItem = sender.GetCurrentMenuItem() as MenuListItem ?? sender.GetMenuItems().OfType<MenuListItem>().FirstOrDefault();
             };
             #endregion
 
             #region props
             propsMenu.OnListIndexChange += (_menu, listItem, oldSelectionIndex, newSelectionIndex, realIndex) =>
             {
-                var propIndex = realIndex;
-                if (realIndex == 3)
-                {
-                    propIndex = 6;
-                }
-                if (realIndex == 4)
-                {
-                    propIndex = 7;
-                }
-
-                var textureIndex = 0;
-                if (newSelectionIndex >= GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propIndex))
-                {
-                    SetPedPropIndex(Game.PlayerPed.Handle, propIndex, -1, -1, false);
-                    ClearPedProp(Game.PlayerPed.Handle, propIndex);
-                    currentCharacter.PropVariations.props ??= new Dictionary<int, KeyValuePair<int, int>>();
-                    currentCharacter.PropVariations.props[propIndex] = new KeyValuePair<int, int>(-1, -1);
-                    listItem.Description = $"Select a prop using the arrow keys and press ~o~enter~s~ to cycle through all available textures.";
-                }
-                else
-                {
-                    SetPedPropIndex(Game.PlayerPed.Handle, propIndex, newSelectionIndex, textureIndex, true);
-                    currentCharacter.PropVariations.props ??= new Dictionary<int, KeyValuePair<int, int>>();
-                    currentCharacter.PropVariations.props[propIndex] = new KeyValuePair<int, int>(newSelectionIndex, textureIndex);
-                    if (GetPedPropIndex(Game.PlayerPed.Handle, propIndex) == -1)
-                    {
-                        listItem.Description = $"Select a prop using the arrow keys and press ~o~enter~s~ to cycle through all available textures.";
-                    }
-                    else
-                    {
-                        var maxPropTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propIndex, newSelectionIndex);
-                        listItem.Description = $"Select a prop using the arrow keys and press ~o~enter~s~ to cycle through all available textures. Currently selected texture: #{textureIndex + 1} (of {maxPropTextures}).";
-                    }
-                }
+                var propIndex = GetPropComponentIndex(realIndex);
+                var propCount = GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propIndex);
+                var selectedProp = newSelectionIndex >= propCount ? -1 : newSelectionIndex;
+                ApplyPropSelection(listItem, realIndex, selectedProp, selectedProp < 0 ? -1 : 0);
             };
 
             propsMenu.OnListItemSelect += (sender, listItem, listIndex, realIndex) =>
             {
-                var propIndex = realIndex;
-                if (realIndex == 3)
+                var propIndex = GetPropComponentIndex(realIndex);
+                var propCount = GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propIndex);
+                if (listIndex >= propCount)
                 {
-                    propIndex = 6;
-                }
-                if (realIndex == 4)
-                {
-                    propIndex = 7;
-                }
-
-                var textureIndex = GetPedPropTextureIndex(Game.PlayerPed.Handle, propIndex);
-                var newTextureIndex = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propIndex, listIndex) - 1 < textureIndex + 1 ? 0 : textureIndex + 1;
-                if (textureIndex >= GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propIndex))
-                {
-                    SetPedPropIndex(Game.PlayerPed.Handle, propIndex, -1, -1, false);
-                    ClearPedProp(Game.PlayerPed.Handle, propIndex);
-                    currentCharacter.PropVariations.props ??= new Dictionary<int, KeyValuePair<int, int>>();
-                    currentCharacter.PropVariations.props[propIndex] = new KeyValuePair<int, int>(-1, -1);
-                    listItem.Description = $"Select a prop using the arrow keys and press ~o~enter~s~ to cycle through all available textures.";
+                    ApplyPropSelection(listItem, realIndex, -1, -1);
                 }
                 else
                 {
-                    SetPedPropIndex(Game.PlayerPed.Handle, propIndex, listIndex, newTextureIndex, true);
-                    currentCharacter.PropVariations.props ??= new Dictionary<int, KeyValuePair<int, int>>();
-                    currentCharacter.PropVariations.props[propIndex] = new KeyValuePair<int, int>(listIndex, newTextureIndex);
-                    if (GetPedPropIndex(Game.PlayerPed.Handle, propIndex) == -1)
-                    {
-                        listItem.Description = $"Select a prop using the arrow keys and press ~o~enter~s~ to cycle through all available textures.";
-                    }
-                    else
-                    {
-                        var maxPropTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propIndex, listIndex);
-                        listItem.Description = $"Select a prop using the arrow keys and press ~o~enter~s~ to cycle through all available textures. Currently selected texture: #{newTextureIndex + 1} (of {maxPropTextures}).";
-                    }
+                    var textureIndex = Math.Max(GetPedPropTextureIndex(Game.PlayerPed.Handle, propIndex), 0);
+                    var newTextureIndex = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propIndex, listIndex) - 1 < textureIndex + 1 ? 0 : textureIndex + 1;
+                    ApplyPropSelection(listItem, realIndex, listIndex, newTextureIndex);
                 }
-                //propsMenu.UpdateScaleform();
+            };
+
+            propsMenu.OnIndexChange += (_, _, newItem, _, _) => UpdatePropTarget(newItem);
+            propsMenu.OnMenuOpen += sender =>
+            {
+                currentPropListItem = sender.GetCurrentMenuItem() as MenuListItem ?? sender.GetMenuItems().OfType<MenuListItem>().FirstOrDefault();
             };
             #endregion
 

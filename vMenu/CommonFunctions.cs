@@ -1855,6 +1855,43 @@ namespace vMenuClient
                 }
             }
         }
+
+        /// <summary>
+        /// Gets a bounded integer input value from the user.
+        /// </summary>
+        /// <param name="windowTitle"></param>
+        /// <param name="defaultValue"></param>
+        /// <param name="minValue"></param>
+        /// <param name="maxValue"></param>
+        /// <returns></returns>
+        public static async Task<int?> GetBoundedIntegerInput(string windowTitle, int defaultValue, int minValue, int maxValue)
+        {
+            if (minValue > maxValue)
+            {
+                Notify.Error("There are no valid values available for this option.");
+                return null;
+            }
+
+            var input = await GetUserInput(windowTitle, defaultValue.ToString(), 11);
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return null;
+            }
+
+            if (!int.TryParse(input, out var value))
+            {
+                Notify.Error(CommonErrors.InvalidInput);
+                return null;
+            }
+
+            if (value < minValue || value > maxValue)
+            {
+                Notify.Error($"Enter a value between ~y~{minValue}~s~ and ~y~{maxValue}~s~.");
+                return null;
+            }
+
+            return value;
+        }
         #endregion
 
         #region Set License Plate Text

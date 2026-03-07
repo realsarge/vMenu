@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 using CitizenFX.Core;
 
@@ -34,6 +35,7 @@ namespace vMenuClient.menus
 
         private readonly Dictionary<MenuListItem, int> drawablesMenuListItems = [];
         private readonly Dictionary<MenuListItem, int> propsMenuListItems = [];
+        private MenuListItem currentPedCustomizationItem;
 
         #region create the menu
         /// <summary>
@@ -63,6 +65,8 @@ namespace vMenuClient.menus
             MenuController.AddSubmenu(spawnPedsMenu, malePedsMenu);
             MenuController.AddSubmenu(spawnPedsMenu, femalePedsMenu);
             MenuController.AddSubmenu(spawnPedsMenu, otherPedsMenu);
+
+            pedCustomizationMenu.InstructionalButtons.Add(Control.LookBehind, "Exact Item");
 
             // Create the menu items.
             var pedCustomization = new MenuItem("Ped Customization", "Modify your ped's appearance.") { Label = "→→→" };
@@ -545,25 +549,19 @@ namespace vMenuClient.menus
                 if (drawablesMenuListItems.ContainsKey(item))
                 {
                     var drawableID = drawablesMenuListItems[item];
-                    SetPedComponentVariation(Game.PlayerPed.Handle, drawableID, newListIndex, 0, 0);
+                    ApplyPedDrawableSelection(item, drawableID, newListIndex, 0);
                 }
                 else if (propsMenuListItems.ContainsKey(item))
                 {
                     var propID = propsMenuListItems[item];
                     if (newListIndex == 0)
                     {
-                        SetPedPropIndex(Game.PlayerPed.Handle, propID, newListIndex - 1, 0, false);
-                        ClearPedProp(Game.PlayerPed.Handle, propID);
+                        ApplyPedPropSelection(item, propID, -1, -1);
                     }
                     else
                     {
-                        SetPedPropIndex(Game.PlayerPed.Handle, propID, newListIndex - 1, 0, true);
+                        ApplyPedPropSelection(item, propID, newListIndex - 1, 0);
                     }
-                    if (propID == 0)
-                    {
-                        ShowVisorText(Game.PlayerPed.Handle);
-                    }
-
                 }
             };
 
@@ -583,18 +581,29 @@ namespace vMenuClient.menus
 
                     var newTexture = currentTextureIndex < maxDrawableTextures ? currentTextureIndex + 1 : 0;
 
-                    SetPedComponentVariation(Game.PlayerPed.Handle, currentDrawableID, listIndex, newTexture, 0);
+                    ApplyPedDrawableSelection(item, currentDrawableID, listIndex, newTexture);
                 }
                 else if (propsMenuListItems.ContainsKey(item)) // prop
                 {
                     var currentPropIndex = propsMenuListItems[item];
                     var currentPropVariationIndex = GetPedPropIndex(Game.PlayerPed.Handle, currentPropIndex);
+                    if (currentPropVariationIndex < 0)
+                    {
+                        return;
+                    }
+
                     var currentPropTextureVariation = GetPedPropTextureIndex(Game.PlayerPed.Handle, currentPropIndex);
                     var maxPropTextureVariations = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, currentPropIndex, currentPropVariationIndex) - 1;
 
                     var newPropTextureVariationIndex = currentPropTextureVariation < maxPropTextureVariations ? currentPropTextureVariation + 1 : 0;
-                    SetPedPropIndex(Game.PlayerPed.Handle, currentPropIndex, currentPropVariationIndex, newPropTextureVariationIndex, true);
+                    ApplyPedPropSelection(item, currentPropIndex, currentPropVariationIndex, newPropTextureVariationIndex);
                 }
+            };
+
+            pedCustomizationMenu.OnIndexChange += (_, _, newItem, _, _) => UpdatePedCustomizationTarget(newItem);
+            pedCustomizationMenu.OnMenuOpen += sender =>
+            {
+                currentPedCustomizationItem = sender.GetCurrentMenuItem() as MenuListItem ?? sender.GetMenuItems().OfType<MenuListItem>().FirstOrDefault();
             };
             #endregion
 
@@ -701,6 +710,92 @@ namespace vMenuClient.menus
             };
         }
 
+        private void UpdatePedCustomizationTarget(MenuItem item)
+        {
+            if (item is MenuListItem listItem
+                && (drawablesMenuListItems.ContainsKey(listItem) || propsMenuListItems.ContainsKey(listItem)))
+            {
+                currentPedCustomizationItem = listItem;
+            }
+        }
+
+        private void ApplyPedDrawableSelection(MenuListItem item, int drawableId, int drawableIndex, int textureIndex)
+        {
+            SetPedComponentVariation(Game.PlayerPed.Handle, drawableId, drawableIndex, textureIndex, 0);
+            item.ListIndex = drawableIndex;
+
+            var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, drawableId, drawableIndex);
+            item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~C~s~ to enter an exact drawable index, and press ~r~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
+        }
+
+        private void ApplyPedPropSelection(MenuListItem item, int propId, int propIndex, int textureIndex)
+        {
+            if (propIndex < 0)
+            {
+                SetPedPropIndex(Game.PlayerPed.Handle, propId, -1, 0, false);
+                ClearPedProp(Game.PlayerPed.Handle, propId);
+                item.ListIndex = 0;
+                item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~C~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures.";
+            }
+            else
+            {
+                SetPedPropIndex(Game.PlayerPed.Handle, propId, propIndex, textureIndex, true);
+                item.ListIndex = propIndex + 1;
+
+                var maxTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propId, propIndex);
+                item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~C~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
+            }
+
+            if (propId == 0)
+            {
+                ShowVisorText(Game.PlayerPed.Handle);
+            }
+        }
+
+        private async Task SetExactPedItemAsync()
+        {
+            if (currentPedCustomizationItem == null)
+            {
+                Notify.Error("Select a ped customization field first.");
+                return;
+            }
+
+            if (drawablesMenuListItems.TryGetValue(currentPedCustomizationItem, out var drawableId))
+            {
+                var maxDrawables = GetNumberOfPedDrawableVariations(Game.PlayerPed.Handle, drawableId) - 1;
+                var currentDrawable = GetPedDrawableVariation(Game.PlayerPed.Handle, drawableId);
+                var exactDrawable = await GetBoundedIntegerInput($"{currentPedCustomizationItem.Text} drawable (0-{maxDrawables})", currentDrawable, 0, maxDrawables);
+                if (exactDrawable.HasValue)
+                {
+                    ApplyPedDrawableSelection(currentPedCustomizationItem, drawableId, exactDrawable.Value, 0);
+                }
+
+                return;
+            }
+
+            if (propsMenuListItems.TryGetValue(currentPedCustomizationItem, out var propId))
+            {
+                var maxProps = GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propId) - 1;
+                var currentProp = GetPedPropIndex(Game.PlayerPed.Handle, propId);
+                var defaultProp = currentProp < 0 ? -1 : currentProp;
+                var exactProp = await GetBoundedIntegerInput($"{currentPedCustomizationItem.Text} prop (-1-{maxProps})", defaultProp, -1, maxProps);
+                if (exactProp.HasValue)
+                {
+                    ApplyPedPropSelection(currentPedCustomizationItem, propId, exactProp.Value, exactProp.Value < 0 ? -1 : 0);
+                }
+
+                return;
+            }
+
+            Notify.Error("Select a ped customization field first.");
+        }
+
+        public bool IsPedCustomizationMenuVisible => pedCustomizationMenu?.Visible == true;
+
+        public async Task PromptExactActiveItemAsync()
+        {
+            await SetExactPedItemAsync();
+        }
 
         #endregion
 
@@ -745,7 +840,7 @@ namespace vMenuClient.menus
                         drawableTexturesList.Add($"Drawable #{i + 1} (of {maxVariations})");
                     }
 
-                    var drawableTextures = new MenuListItem($"{textureNames[drawable]}", drawableTexturesList, currentDrawable, $"Use ← & → to select a ~o~{textureNames[drawable]} Variation~s~, press ~r~enter~s~ to cycle through the available textures.");
+                    var drawableTextures = new MenuListItem($"{textureNames[drawable]}", drawableTexturesList, currentDrawable, $"Use ← & → to select a ~o~{textureNames[drawable]} Variation~s~, press ~g~C~s~ to enter an exact drawable index, and press ~r~enter~s~ to cycle textures.");
                     drawablesMenuListItems.Add(drawableTextures, drawable);
                     pedCustomizationMenu.AddMenuItem(drawableTextures);
                 }
@@ -772,7 +867,7 @@ namespace vMenuClient.menus
                     }
 
 
-                    var propTextures = new MenuListItem($"{propNames[tmpProp]}", propTexturesList, currentProp + 1, $"Use ← & → to select a ~o~{propNames[tmpProp]} Variation~s~, press ~r~enter~s~ to cycle through the available textures.");
+                    var propTextures = new MenuListItem($"{propNames[tmpProp]}", propTexturesList, currentProp + 1, $"Use ← & → to select a ~o~{propNames[tmpProp]} Variation~s~, press ~g~C~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures.");
                     propsMenuListItems.Add(propTextures, realProp);
                     pedCustomizationMenu.AddMenuItem(propTextures);
 
@@ -2444,3 +2539,7 @@ namespace vMenuClient.menus
         }
     }
 }
+
+
+
+

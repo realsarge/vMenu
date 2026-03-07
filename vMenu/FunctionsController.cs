@@ -145,6 +145,7 @@ namespace vMenuClient
             if (IsAllowed(Permission.PAMenu))
             {
                 Tick += ManageCamera;
+                Tick += CharacterCustomizationExactInput;
                 Tick += DisableMovement;
             }
             if (IsAllowed(Permission.MSPlayerBlips))
@@ -1791,6 +1792,30 @@ namespace vMenuClient
                     ClearCamera();
                     camera = null;
                 }
+            }
+        }
+
+        private async Task CharacterCustomizationExactInput()
+        {
+            var exactItemPressed = Game.IsControlJustReleased(0, Control.LookBehind) || Game.IsDisabledControlJustReleased(0, Control.LookBehind);
+            if (!exactItemPressed || UpdateOnscreenKeyboard() == 0)
+            {
+                return;
+            }
+
+            if (MainMenu.MpPedCustomizationMenu != null)
+            {
+                var currentMenu = MenuController.GetCurrentMenu();
+                if (currentMenu == MainMenu.MpPedCustomizationMenu.clothesMenu || currentMenu == MainMenu.MpPedCustomizationMenu.propsMenu)
+                {
+                    await MainMenu.MpPedCustomizationMenu.PromptExactActiveItemAsync();
+                    return;
+                }
+            }
+
+            if (MainMenu.PlayerAppearanceMenu != null && MainMenu.PlayerAppearanceMenu.IsPedCustomizationMenuVisible)
+            {
+                await MainMenu.PlayerAppearanceMenu.PromptExactActiveItemAsync();
             }
         }
 
