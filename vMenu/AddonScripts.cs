@@ -25,6 +25,7 @@ namespace vMenuClient
             var vehicleSpawner = new MenuItem("Spawner (Vehicle)", "Open the vehicle-attached object spawner.");
             var deleteSpawnerObject = new MenuItem("Spawner (Delete Object)", "Delete the nearest spawned object.");
             var trafficMenu = new MenuItem("Traffic Control", "Open the traffic control menu.");
+            var freeCamera = new MenuItem("Свободная камера", "Open the cinematic camera menu.");
 
             menu.AddMenuItem(policeRadar);
             menu.AddMenuItem(heliWinch);
@@ -33,6 +34,7 @@ namespace vMenuClient
             menu.AddMenuItem(vehicleSpawner);
             menu.AddMenuItem(deleteSpawnerObject);
             menu.AddMenuItem(trafficMenu);
+            menu.AddMenuItem(freeCamera);
 
             menu.OnItemSelect += (sender, item, index) =>
             {
@@ -63,6 +65,10 @@ namespace vMenuClient
                 else if (item == deleteSpawnerObject)
                 {
                     ExecuteCommand("deleter");
+                }
+                else if (item == freeCamera)
+                {
+                    LaunchExternalMenu(() => TriggerEvent("CinematicCam:openMenu"));
                 }
                 else if (item == trafficMenu)
                 {
