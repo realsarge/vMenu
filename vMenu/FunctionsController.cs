@@ -1797,23 +1797,29 @@ namespace vMenuClient
 
         private async Task CharacterCustomizationExactInput()
         {
-            var exactItemPressed = Game.IsControlJustReleased(0, Control.LookBehind) || Game.IsDisabledControlJustReleased(0, Control.LookBehind);
+            var currentMenu = MenuController.GetCurrentMenu();
+            var isMpCustomizationMenu = MainMenu.MpPedCustomizationMenu != null
+                && (currentMenu == MainMenu.MpPedCustomizationMenu.clothesMenu || currentMenu == MainMenu.MpPedCustomizationMenu.propsMenu);
+            var isSpCustomizationMenu = MainMenu.PlayerAppearanceMenu != null && MainMenu.PlayerAppearanceMenu.IsPedCustomizationMenuVisible;
+
+            if (isMpCustomizationMenu || isSpCustomizationMenu)
+            {
+                Game.DisableControlThisFrame(0, Control.MultiplayerInfo);
+            }
+
+            var exactItemPressed = Game.IsControlJustReleased(0, Control.MultiplayerInfo) || Game.IsDisabledControlJustReleased(0, Control.MultiplayerInfo);
             if (!exactItemPressed || UpdateOnscreenKeyboard() == 0)
             {
                 return;
             }
 
-            if (MainMenu.MpPedCustomizationMenu != null)
+            if (isMpCustomizationMenu)
             {
-                var currentMenu = MenuController.GetCurrentMenu();
-                if (currentMenu == MainMenu.MpPedCustomizationMenu.clothesMenu || currentMenu == MainMenu.MpPedCustomizationMenu.propsMenu)
-                {
-                    await MainMenu.MpPedCustomizationMenu.PromptExactActiveItemAsync();
-                    return;
-                }
+                await MainMenu.MpPedCustomizationMenu.PromptExactActiveItemAsync();
+                return;
             }
 
-            if (MainMenu.PlayerAppearanceMenu != null && MainMenu.PlayerAppearanceMenu.IsPedCustomizationMenuVisible)
+            if (isSpCustomizationMenu)
             {
                 await MainMenu.PlayerAppearanceMenu.PromptExactActiveItemAsync();
             }

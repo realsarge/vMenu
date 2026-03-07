@@ -571,7 +571,7 @@ namespace vMenuClient.menus
 
                     var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, i, currentVariationIndex);
 
-                    var listItem = new MenuListItem(clothingCategoryNames[i], items, currentVariationIndex, $"Select a drawable using the arrow keys, press ~g~C~s~ to enter an exact drawable index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{currentVariationTextureIndex + 1} (of {maxTextures}).");
+                    var listItem = new MenuListItem(clothingCategoryNames[i], items, currentVariationIndex, $"Select a drawable using the arrow keys, press ~g~Z~s~ to enter an exact drawable index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{currentVariationTextureIndex + 1} (of {maxTextures}).");
                     clothesMenu.AddMenuItem(listItem);
                 }
             }
@@ -601,12 +601,12 @@ namespace vMenuClient.menus
                 if (GetPedPropIndex(Game.PlayerPed.Handle, propId) != -1)
                 {
                     var maxPropTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propId, currentProp);
-                    var propListItem = new MenuListItem($"{propNames[x]}", propsList, currentProp, $"Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{currentPropTexture + 1} (of {maxPropTextures}).");
+                    var propListItem = new MenuListItem($"{propNames[x]}", propsList, currentProp, $"Select a prop using the arrow keys, press ~g~Z~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{currentPropTexture + 1} (of {maxPropTextures}).");
                     propsMenu.AddMenuItem(propListItem);
                 }
                 else
                 {
-                    var propListItem = new MenuListItem($"{propNames[x]}", propsList, currentProp, "Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.");
+                    var propListItem = new MenuListItem($"{propNames[x]}", propsList, currentProp, "Select a prop using the arrow keys, press ~g~Z~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.");
                     propsMenu.AddMenuItem(propListItem);
                 }
 
@@ -846,7 +846,7 @@ namespace vMenuClient.menus
             listItem.ListIndex = drawableIndex;
 
             var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, componentIndex, drawableIndex);
-            listItem.Description = $"Select a drawable using the arrow keys, press ~g~C~s~ to enter an exact drawable index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
+            listItem.Description = $"Select a drawable using the arrow keys, press ~g~Z~s~ to enter an exact drawable index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
         }
 
         private void ApplyPropSelection(MenuListItem listItem, int realIndex, int propDrawableIndex, int textureIndex)
@@ -862,7 +862,7 @@ namespace vMenuClient.menus
                 ClearPedProp(Game.PlayerPed.Handle, propIndex);
                 currentCharacter.PropVariations.props[propIndex] = new KeyValuePair<int, int>(-1, -1);
                 listItem.ListIndex = propCount;
-                listItem.Description = "Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.";
+                listItem.Description = "Select a prop using the arrow keys, press ~g~Z~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.";
                 return;
             }
 
@@ -872,12 +872,12 @@ namespace vMenuClient.menus
 
             if (GetPedPropIndex(Game.PlayerPed.Handle, propIndex) == -1)
             {
-                listItem.Description = "Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.";
+                listItem.Description = "Select a prop using the arrow keys, press ~g~Z~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures.";
                 return;
             }
 
             var maxPropTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propIndex, propDrawableIndex);
-            listItem.Description = $"Select a prop using the arrow keys, press ~g~C~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxPropTextures}).";
+            listItem.Description = $"Select a prop using the arrow keys, press ~g~Z~s~ to enter an exact prop index, and press ~o~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxPropTextures}).";
         }
 
         private async Task SetExactClothingDrawableAsync()
@@ -1116,8 +1116,8 @@ namespace vMenuClient.menus
             clothesMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
             propsMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
 
-            clothesMenu.InstructionalButtons.Add(Control.LookBehind, "Exact Item");
-            propsMenu.InstructionalButtons.Add(Control.LookBehind, "Exact Item");
+            clothesMenu.InstructionalButtons.Add(Control.MultiplayerInfo, "Exact Item");
+            propsMenu.InstructionalButtons.Add(Control.MultiplayerInfo, "Exact Item");
 
             createCharacterMenu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");
             inheritanceMenu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");

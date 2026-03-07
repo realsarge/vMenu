@@ -66,7 +66,7 @@ namespace vMenuClient.menus
             MenuController.AddSubmenu(spawnPedsMenu, femalePedsMenu);
             MenuController.AddSubmenu(spawnPedsMenu, otherPedsMenu);
 
-            pedCustomizationMenu.InstructionalButtons.Add(Control.LookBehind, "Exact Item");
+            pedCustomizationMenu.InstructionalButtons.Add(Control.MultiplayerInfo, "Exact Item");
 
             // Create the menu items.
             var pedCustomization = new MenuItem("Ped Customization", "Modify your ped's appearance.") { Label = "→→→" };
@@ -719,31 +719,33 @@ namespace vMenuClient.menus
             }
         }
 
-        private void ApplyPedDrawableSelection(MenuListItem item, int drawableId, int drawableIndex, int textureIndex)
+        private void ApplyPedDrawableSelection(MenuListItem item, int drawableId, int drawableIndex, int textureIndex, bool shiftTextureForSpPed = false)
         {
-            SetPedComponentVariation(Game.PlayerPed.Handle, drawableId, drawableIndex, textureIndex, 0);
+            var appliedTextureIndex = shiftTextureForSpPed ? textureIndex - 1 : textureIndex;
+            SetPedComponentVariation(Game.PlayerPed.Handle, drawableId, drawableIndex, appliedTextureIndex, 0);
             item.ListIndex = drawableIndex;
 
             var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, drawableId, drawableIndex);
-            item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~C~s~ to enter an exact drawable index, and press ~r~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
+            item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~Z~s~ to enter an exact drawable index, and press ~r~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
         }
 
-        private void ApplyPedPropSelection(MenuListItem item, int propId, int propIndex, int textureIndex)
+        private void ApplyPedPropSelection(MenuListItem item, int propId, int propIndex, int textureIndex, bool shiftTextureForSpPed = false)
         {
             if (propIndex < 0)
             {
                 SetPedPropIndex(Game.PlayerPed.Handle, propId, -1, 0, false);
                 ClearPedProp(Game.PlayerPed.Handle, propId);
                 item.ListIndex = 0;
-                item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~C~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures.";
+                item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~Z~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures.";
             }
             else
             {
-                SetPedPropIndex(Game.PlayerPed.Handle, propId, propIndex, textureIndex, true);
+                var appliedTextureIndex = shiftTextureForSpPed ? textureIndex - 2 : textureIndex;
+                SetPedPropIndex(Game.PlayerPed.Handle, propId, propIndex, appliedTextureIndex, true);
                 item.ListIndex = propIndex + 1;
 
                 var maxTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propId, propIndex);
-                item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~C~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
+                item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~Z~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
             }
 
             if (propId == 0)
@@ -767,7 +769,7 @@ namespace vMenuClient.menus
                 var exactDrawable = await GetBoundedIntegerInput($"{currentPedCustomizationItem.Text} drawable (0-{maxDrawables})", currentDrawable, 0, maxDrawables);
                 if (exactDrawable.HasValue)
                 {
-                    ApplyPedDrawableSelection(currentPedCustomizationItem, drawableId, exactDrawable.Value, 0);
+                    ApplyPedDrawableSelection(currentPedCustomizationItem, drawableId, exactDrawable.Value, 0, shiftTextureForSpPed: true);
                 }
 
                 return;
@@ -781,7 +783,7 @@ namespace vMenuClient.menus
                 var exactProp = await GetBoundedIntegerInput($"{currentPedCustomizationItem.Text} prop (-1-{maxProps})", defaultProp, -1, maxProps);
                 if (exactProp.HasValue)
                 {
-                    ApplyPedPropSelection(currentPedCustomizationItem, propId, exactProp.Value, exactProp.Value < 0 ? -1 : 0);
+                    ApplyPedPropSelection(currentPedCustomizationItem, propId, exactProp.Value, exactProp.Value < 0 ? -1 : 0, shiftTextureForSpPed: exactProp.Value >= 0);
                 }
 
                 return;
@@ -840,7 +842,7 @@ namespace vMenuClient.menus
                         drawableTexturesList.Add($"Drawable #{i + 1} (of {maxVariations})");
                     }
 
-                    var drawableTextures = new MenuListItem($"{textureNames[drawable]}", drawableTexturesList, currentDrawable, $"Use ← & → to select a ~o~{textureNames[drawable]} Variation~s~, press ~g~C~s~ to enter an exact drawable index, and press ~r~enter~s~ to cycle textures.");
+                    var drawableTextures = new MenuListItem($"{textureNames[drawable]}", drawableTexturesList, currentDrawable, $"Use ← & → to select a ~o~{textureNames[drawable]} Variation~s~, press ~g~Z~s~ to enter an exact drawable index, and press ~r~enter~s~ to cycle textures.");
                     drawablesMenuListItems.Add(drawableTextures, drawable);
                     pedCustomizationMenu.AddMenuItem(drawableTextures);
                 }
@@ -867,7 +869,7 @@ namespace vMenuClient.menus
                     }
 
 
-                    var propTextures = new MenuListItem($"{propNames[tmpProp]}", propTexturesList, currentProp + 1, $"Use ← & → to select a ~o~{propNames[tmpProp]} Variation~s~, press ~g~C~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures.");
+                    var propTextures = new MenuListItem($"{propNames[tmpProp]}", propTexturesList, currentProp + 1, $"Use ← & → to select a ~o~{propNames[tmpProp]} Variation~s~, press ~g~Z~s~ to enter an exact prop index, and press ~r~enter~s~ to cycle textures.");
                     propsMenuListItems.Add(propTextures, realProp);
                     pedCustomizationMenu.AddMenuItem(propTextures);
 
