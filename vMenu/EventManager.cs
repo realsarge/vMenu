@@ -52,6 +52,7 @@ namespace vMenuClient
             EventHandlers.Add("vMenu:UpdateTeleportLocations", new Action<string>(UpdateTeleportLocations));
             EventHandlers.Add("vMenu:SendCharacterNames", new Action<string>(SendCharacterNames));
             EventHandlers.Add("vMenu:RefreshCharacterNames", new Action(RefreshCharacterNames));
+            EventHandlers.Add("vMenu:SetFitPresets", new Action<string>(SetFitPresets));
 
             if (GetSettingsBool(Setting.vmenu_enable_weather_sync))
             {
@@ -123,6 +124,11 @@ namespace vMenuClient
             SetExtras();
 
             MainMenu.ConfigOptionsSetupComplete = true;
+        }
+
+        private static void SetFitPresets(string jsonData)
+        {
+            menus.MpPedCustomization.SetServerFitPresets(jsonData);
         }
 
         /// <summary>

@@ -20,8 +20,17 @@ namespace vMenuClient.menus
 {
     public class MpPedCustomization
     {
+        public sealed class ServerFitPreset
+        {
+            public string name { get; set; }
+            public string description { get; set; }
+            public string fitCode { get; set; }
+            public List<string> models { get; set; } = new List<string>();
+        }
+
         private const string FitClipboardKvp = "vmenu_fit_clipboard";
         private static readonly int[] FitExportComponentIds = { 1, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+        private static List<ServerFitPreset> serverFitPresets = new List<ServerFitPreset>();
 
         // Variables
         private Menu menu;
@@ -34,7 +43,9 @@ namespace vMenuClient.menus
         public Menu tattoosMenu = new("vMenu", "Character Tattoo Options");
         public Menu clothesMenu = new("vMenu", "Character Clothing Options");
         public Menu propsMenu = new("vMenu", "Character Props Options");
+        public Menu fitPresetsMenu = new("vMenu", "Outfit Presets");
         private readonly Menu manageSavedCharacterMenu = new("vMenu", "Manage MP Character");
+        private readonly MenuItem applyFitPresetButton = new("Apply Outfit Preset", "Apply a server-configured outfit preset to this character.") { Label = "→→→" };
 
         // Need to be able to disable/enable these buttons from another class.
         internal MenuItem createMaleBtn = new("Create Male Character", "Create a new male character.") { Label = "→→→" };
@@ -137,6 +148,69 @@ namespace vMenuClient.menus
         private MpCharacterCategory currentCategory = new();
 
         private Ped _clone;
+
+        public static void SetServerFitPresets(string jsonData)
+        {
+            try
+            {
+                serverFitPresets = JsonConvert.DeserializeObject<List<ServerFitPreset>>(jsonData) ?? new List<ServerFitPreset>();
+            }
+            catch (JsonException)
+            {
+                serverFitPresets = new List<ServerFitPreset>();
+            }
+        }
+
+        private static bool FitPresetSupportsModel(ServerFitPreset preset, uint modelHash)
+        {
+            if (preset?.models == null || preset.models.Count == 0)
+            {
+                return true;
+            }
+
+            var modelName = modelHash == (uint)GetHashKey("mp_f_freemode_01") ? "mp_f_freemode_01" : "mp_m_freemode_01";
+            return preset.models.Any(m => string.Equals(m?.Trim(), modelName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void RefreshFitPresetsMenu()
+        {
+            fitPresetsMenu.ClearMenuItems();
+
+            var currentModelHash = currentCharacter.ModelHash != 0 ? currentCharacter.ModelHash : (uint)GetEntityModel(Game.PlayerPed.Handle);
+            var visiblePresets = serverFitPresets
+                .Where(preset => !string.IsNullOrWhiteSpace(preset?.name) && !string.IsNullOrWhiteSpace(preset.fitCode) && FitPresetSupportsModel(preset, currentModelHash))
+                .OrderBy(preset => preset.name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (visiblePresets.Count == 0)
+            {
+                fitPresetsMenu.AddMenuItem(new MenuItem("No Presets Configured", "No matching server fit presets were found for this freemode model.")
+                {
+                    Enabled = false,
+                    LeftIcon = MenuItem.Icon.INFO
+                });
+
+                applyFitPresetButton.Enabled = false;
+                applyFitPresetButton.LeftIcon = MenuItem.Icon.LOCK;
+                applyFitPresetButton.Description = "No matching server fit presets are configured for this freemode model.";
+                fitPresetsMenu.RefreshIndex();
+                return;
+            }
+
+            applyFitPresetButton.Enabled = true;
+            applyFitPresetButton.LeftIcon = MenuItem.Icon.NONE;
+            applyFitPresetButton.Description = "Apply a server-configured outfit preset to this character.";
+
+            foreach (var preset in visiblePresets)
+            {
+                fitPresetsMenu.AddMenuItem(new MenuItem(preset.name, string.IsNullOrWhiteSpace(preset.description) ? "Apply this outfit preset." : preset.description)
+                {
+                    ItemData = preset
+                });
+            }
+
+            fitPresetsMenu.RefreshIndex();
+        }
 
         /// <summary>
         /// Makes or updates the character creator menu. Also has an option to load data from the <see cref="currentCharacter"/> data, to allow for editing an existing ped.
@@ -614,6 +688,9 @@ namespace vMenuClient.menus
             }
             #endregion
 
+            RefreshFitPresetsMenu();
+            clothesMenu.AddMenuItem(applyFitPresetButton);
+
             #region face features menu
             foreach (MenuSliderItem item in faceShapeMenu.GetMenuItems())
             {
@@ -882,6 +959,7 @@ namespace vMenuClient.menus
 
         private async Task SetExactClothingDrawableAsync()
         {
+            currentClothingListItem = clothesMenu.GetCurrentMenuItem() as MenuListItem;
             if (currentClothingListItem == null)
             {
                 Notify.Error("Select a clothing field first.");
@@ -909,6 +987,7 @@ namespace vMenuClient.menus
 
         private async Task SetExactPropDrawableAsync()
         {
+            currentPropListItem = propsMenu.GetCurrentMenuItem() as MenuListItem;
             if (currentPropListItem == null)
             {
                 Notify.Error("Select a prop field first.");
@@ -1088,6 +1167,7 @@ namespace vMenuClient.menus
             MenuController.AddMenu(tattoosMenu);
             MenuController.AddMenu(clothesMenu);
             MenuController.AddMenu(propsMenu);
+            MenuController.AddMenu(fitPresetsMenu);
 
             CreateSavedPedsMenu();
 
@@ -1107,6 +1187,7 @@ namespace vMenuClient.menus
             tattoosMenu.InstructionalButtons.Add(Control.MoveLeftRight, "Turn Head");
             clothesMenu.InstructionalButtons.Add(Control.MoveLeftRight, "Turn Head");
             propsMenu.InstructionalButtons.Add(Control.MoveLeftRight, "Turn Head");
+            fitPresetsMenu.InstructionalButtons.Add(Control.MoveLeftRight, "Turn Head");
 
             createCharacterMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
             inheritanceMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
@@ -1115,6 +1196,7 @@ namespace vMenuClient.menus
             tattoosMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
             clothesMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
             propsMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
+            fitPresetsMenu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
 
             clothesMenu.InstructionalButtons.Add(Control.MultiplayerInfo, "Exact Item");
             propsMenu.InstructionalButtons.Add(Control.MultiplayerInfo, "Exact Item");
@@ -1126,6 +1208,7 @@ namespace vMenuClient.menus
             tattoosMenu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");
             clothesMenu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");
             propsMenu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");
+            fitPresetsMenu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");
 
             createCharacterMenu.InstructionalButtons.Add(Control.ParachuteBrakeLeft, "Turn Camera Left");
             inheritanceMenu.InstructionalButtons.Add(Control.ParachuteBrakeLeft, "Turn Camera Left");
@@ -1134,6 +1217,7 @@ namespace vMenuClient.menus
             tattoosMenu.InstructionalButtons.Add(Control.ParachuteBrakeLeft, "Turn Camera Left");
             clothesMenu.InstructionalButtons.Add(Control.ParachuteBrakeLeft, "Turn Camera Left");
             propsMenu.InstructionalButtons.Add(Control.ParachuteBrakeLeft, "Turn Camera Left");
+            fitPresetsMenu.InstructionalButtons.Add(Control.ParachuteBrakeLeft, "Turn Camera Left");
 
 
             var randomizeButton = new MenuItem("Randomize Character", "Randomize character appearance.");
@@ -1174,6 +1258,17 @@ namespace vMenuClient.menus
             MenuController.BindMenuItem(createCharacterMenu, tattoosMenu, tattoosButton);
             MenuController.BindMenuItem(createCharacterMenu, clothesMenu, clothesButton);
             MenuController.BindMenuItem(createCharacterMenu, propsMenu, propsButton);
+            MenuController.BindMenuItem(clothesMenu, fitPresetsMenu, applyFitPresetButton);
+
+            fitPresetsMenu.OnMenuOpen += _ => RefreshFitPresetsMenu();
+            fitPresetsMenu.OnItemSelect += (_, item, __) =>
+            {
+                if (item.ItemData is ServerFitPreset preset)
+                {
+                    ApplyFitCode(preset.fitCode);
+                    fitPresetsMenu.GoBack();
+                }
+            };
 
             #region inheritance
             var dads = new Dictionary<string, int>();

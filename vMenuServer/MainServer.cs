@@ -59,11 +59,27 @@ namespace vMenuServer
 
     public class MainServer : BaseScript
     {
+        private const string FitPresetsConfigPath = "config/fit_presets.json";
+
+        private sealed class FitPresetConfigFile
+        {
+            public List<FitPresetDefinition> presets { get; set; } = new List<FitPresetDefinition>();
+        }
+
+        public sealed class FitPresetDefinition
+        {
+            public string name { get; set; }
+            public string description { get; set; }
+            public string fitCode { get; set; }
+            public List<string> models { get; set; } = new List<string>();
+        }
+
         #region vars
         // Debug shows more information when doing certain things. Leave it off to improve performance!
         public static bool DebugMode = GetResourceMetadata(GetCurrentResourceName(), "server_debug_mode", 0) == "true";
 
         public static string Version { get { return GetResourceMetadata(GetCurrentResourceName(), "version", 0); } }
+        public static string FitPresetsJson { get; private set; } = "[]";
 
         // Time
         private int CurrentHours
@@ -246,6 +262,8 @@ namespace vMenuServer
                 {
                     Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your extras.json file contains a problem! Error details: {ex.Message}\n\n");
                 }
+
+                LoadFitPresets();
 
                 // check if permissions are setup (correctly)
                 if (!GetSettingsBool(Setting.vmenu_use_permissions))
@@ -1132,6 +1150,7 @@ namespace vMenuServer
                 joinedPlayers.Add(player.Handle);
 
                 PermissionsManager.SetPermissionsForPlayer(player);
+                player.TriggerEvent("vMenu:SetFitPresets", FitPresetsJson);
             }
         }
 
@@ -1141,6 +1160,7 @@ namespace vMenuServer
             joinedPlayers.Add(sourcePlayer.Handle);
 
             PermissionsManager.SetPermissionsForPlayer(sourcePlayer);
+            sourcePlayer.TriggerEvent("vMenu:SetFitPresets", FitPresetsJson);
 
             string sourcePlayerName = sourcePlayer.Name;
 
@@ -1175,6 +1195,113 @@ namespace vMenuServer
         #endregion
 
         #region Utilities
+        private static void LoadFitPresets()
+        {
+            var fitPresetFile = LoadResourceFile(GetCurrentResourceName(), FitPresetsConfigPath) ?? "{ \"presets\": [] }";
+
+            try
+            {
+                var parsedFile = JsonConvert.DeserializeObject<FitPresetConfigFile>(fitPresetFile) ?? new FitPresetConfigFile();
+                var validatedPresets = new List<FitPresetDefinition>();
+                var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var preset in parsedFile.presets ?? Enumerable.Empty<FitPresetDefinition>())
+                {
+                    if (preset == null)
+                    {
+                        continue;
+                    }
+
+                    var name = preset.name?.Trim();
+                    var fitCode = preset.fitCode?.Trim();
+                    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(fitCode))
+                    {
+                        Debug.WriteLine("^3[vMenu] [WARNING]^7 Skipping a fit preset with a missing name or fitCode.");
+                        continue;
+                    }
+
+                    if (!usedNames.Add(name))
+                    {
+                        Debug.WriteLine($"^3[vMenu] [WARNING]^7 Duplicate fit preset name '{name}' found in {FitPresetsConfigPath}. Keeping the first entry only.");
+                        continue;
+                    }
+
+                    if (!IsValidFitCode(fitCode, out var validationError))
+                    {
+                        Debug.WriteLine($"^3[vMenu] [WARNING]^7 Skipping fit preset '{name}' because its fitCode is invalid: {validationError}");
+                        continue;
+                    }
+
+                    validatedPresets.Add(new FitPresetDefinition
+                    {
+                        name = name,
+                        description = preset.description?.Trim() ?? "",
+                        fitCode = fitCode,
+                        models = (preset.models ?? new List<string>())
+                            .Where(model => !string.IsNullOrWhiteSpace(model))
+                            .Select(model => model.Trim())
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList()
+                    });
+                }
+
+                FitPresetsJson = JsonConvert.SerializeObject(validatedPresets);
+                Log($"Loaded {validatedPresets.Count} fit preset(s) from {FitPresetsConfigPath}.", LogLevel.info);
+            }
+            catch (JsonException ex)
+            {
+                FitPresetsJson = "[]";
+                Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your {FitPresetsConfigPath} file contains a problem! Error details: {ex.Message}\n\n");
+            }
+        }
+
+        private static bool IsValidFitCode(string fitCode, out string errorMessage)
+        {
+            errorMessage = null;
+
+            var components = new HashSet<int>();
+            foreach (var rawEntry in fitCode.Split(','))
+            {
+                var entry = rawEntry.Trim();
+                if (string.IsNullOrWhiteSpace(entry))
+                {
+                    continue;
+                }
+
+                var parts = entry.Split(':');
+                if (parts.Length != 3
+                    || !int.TryParse(parts[0], out var componentId)
+                    || !int.TryParse(parts[1], out var drawable)
+                    || !int.TryParse(parts[2], out var texture))
+                {
+                    errorMessage = $"Invalid fit entry '{entry}'.";
+                    return false;
+                }
+
+                if (componentId < 0 || componentId > 11)
+                {
+                    errorMessage = $"Unsupported component id '{componentId}'.";
+                    return false;
+                }
+
+                if (drawable < 0 || texture < 0)
+                {
+                    errorMessage = $"Drawable and texture must be non-negative in '{entry}'.";
+                    return false;
+                }
+
+                components.Add(componentId);
+            }
+
+            if (components.Count == 0)
+            {
+                errorMessage = "Fit code does not contain any valid clothing components.";
+                return false;
+            }
+
+            return true;
+        }
+
         private Player GetPlayerFromServerId(string serverId)
         {
             if (!int.TryParse(serverId, out int serverIdInt))

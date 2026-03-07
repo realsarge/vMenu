@@ -1571,6 +1571,7 @@ namespace vMenuClient
                     MainMenu.MpPedCustomizationMenu.inheritanceMenu.Visible ||
                     MainMenu.MpPedCustomizationMenu.propsMenu.Visible ||
                     MainMenu.MpPedCustomizationMenu.clothesMenu.Visible ||
+                    MainMenu.MpPedCustomizationMenu.fitPresetsMenu.Visible ||
                     MainMenu.MpPedCustomizationMenu.tattoosMenu.Visible;
             }
             return false;
@@ -1798,8 +1799,9 @@ namespace vMenuClient
         private async Task CharacterCustomizationExactInput()
         {
             var currentMenu = MenuController.GetCurrentMenu();
-            var isMpCustomizationMenu = MainMenu.MpPedCustomizationMenu != null
+            var isMpExactInputMenu = MainMenu.MpPedCustomizationMenu != null
                 && (currentMenu == MainMenu.MpPedCustomizationMenu.clothesMenu || currentMenu == MainMenu.MpPedCustomizationMenu.propsMenu);
+            var isMpCustomizationMenu = isMpExactInputMenu || (MainMenu.MpPedCustomizationMenu != null && currentMenu == MainMenu.MpPedCustomizationMenu.fitPresetsMenu);
             var isSpCustomizationMenu = MainMenu.PlayerAppearanceMenu != null && MainMenu.PlayerAppearanceMenu.IsPedCustomizationMenuVisible;
 
             if (isMpCustomizationMenu || isSpCustomizationMenu)
@@ -1813,7 +1815,7 @@ namespace vMenuClient
                 return;
             }
 
-            if (isMpCustomizationMenu)
+            if (isMpExactInputMenu)
             {
                 await MainMenu.MpPedCustomizationMenu.PromptExactActiveItemAsync();
                 return;
@@ -1877,6 +1879,10 @@ namespace vMenuClient
 
                         _ => 0,
                     };
+                }
+                else if (menu == MainMenu.MpPedCustomizationMenu.fitPresetsMenu)
+                {
+                    return 2;
                 }
                 else if (menu == MainMenu.MpPedCustomizationMenu.appearanceMenu)
                 {

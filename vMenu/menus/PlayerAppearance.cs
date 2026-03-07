@@ -719,17 +719,16 @@ namespace vMenuClient.menus
             }
         }
 
-        private void ApplyPedDrawableSelection(MenuListItem item, int drawableId, int drawableIndex, int textureIndex, bool shiftTextureForSpPed = false)
+        private void ApplyPedDrawableSelection(MenuListItem item, int drawableId, int drawableIndex, int textureIndex)
         {
-            var appliedTextureIndex = shiftTextureForSpPed ? textureIndex - 1 : textureIndex;
-            SetPedComponentVariation(Game.PlayerPed.Handle, drawableId, drawableIndex, appliedTextureIndex, 0);
+            SetPedComponentVariation(Game.PlayerPed.Handle, drawableId, drawableIndex, textureIndex, 0);
             item.ListIndex = drawableIndex;
 
             var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, drawableId, drawableIndex);
             item.Description = $"Use ← & → to select a ~o~{item.Text} Variation~s~, press ~g~Z~s~ to enter an exact drawable index, and press ~r~enter~s~ to cycle textures. Currently selected texture: #{textureIndex + 1} (of {maxTextures}).";
         }
 
-        private void ApplyPedPropSelection(MenuListItem item, int propId, int propIndex, int textureIndex, bool shiftTextureForSpPed = false)
+        private void ApplyPedPropSelection(MenuListItem item, int propId, int propIndex, int textureIndex)
         {
             if (propIndex < 0)
             {
@@ -740,8 +739,7 @@ namespace vMenuClient.menus
             }
             else
             {
-                var appliedTextureIndex = shiftTextureForSpPed ? textureIndex - 2 : textureIndex;
-                SetPedPropIndex(Game.PlayerPed.Handle, propId, propIndex, appliedTextureIndex, true);
+                SetPedPropIndex(Game.PlayerPed.Handle, propId, propIndex, textureIndex, true);
                 item.ListIndex = propIndex + 1;
 
                 var maxTextures = GetNumberOfPedPropTextureVariations(Game.PlayerPed.Handle, propId, propIndex);
@@ -764,12 +762,12 @@ namespace vMenuClient.menus
 
             if (drawablesMenuListItems.TryGetValue(currentPedCustomizationItem, out var drawableId))
             {
-                var maxDrawables = GetNumberOfPedDrawableVariations(Game.PlayerPed.Handle, drawableId) - 1;
+                var maxDrawables = GetNumberOfPedDrawableVariations(Game.PlayerPed.Handle, drawableId);
                 var currentDrawable = GetPedDrawableVariation(Game.PlayerPed.Handle, drawableId);
-                var exactDrawable = await GetBoundedIntegerInput($"{currentPedCustomizationItem.Text} drawable (0-{maxDrawables})", currentDrawable, 0, maxDrawables);
+                var exactDrawable = await GetBoundedIntegerInput($"{currentPedCustomizationItem.Text} drawable number (1-{maxDrawables})", currentDrawable + 1, 1, maxDrawables);
                 if (exactDrawable.HasValue)
                 {
-                    ApplyPedDrawableSelection(currentPedCustomizationItem, drawableId, exactDrawable.Value, 0, shiftTextureForSpPed: true);
+                    ApplyPedDrawableSelection(currentPedCustomizationItem, drawableId, exactDrawable.Value - 1, 0);
                 }
 
                 return;
@@ -777,13 +775,13 @@ namespace vMenuClient.menus
 
             if (propsMenuListItems.TryGetValue(currentPedCustomizationItem, out var propId))
             {
-                var maxProps = GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propId) - 1;
+                var maxProps = GetNumberOfPedPropDrawableVariations(Game.PlayerPed.Handle, propId) + 1;
                 var currentProp = GetPedPropIndex(Game.PlayerPed.Handle, propId);
-                var defaultProp = currentProp < 0 ? -1 : currentProp;
-                var exactProp = await GetBoundedIntegerInput($"{currentPedCustomizationItem.Text} prop (-1-{maxProps})", defaultProp, -1, maxProps);
+                var defaultProp = currentProp < 0 ? 1 : currentProp + 2;
+                var exactProp = await GetBoundedIntegerInput($"{currentPedCustomizationItem.Text} prop number (1-{maxProps})", defaultProp, 1, maxProps);
                 if (exactProp.HasValue)
                 {
-                    ApplyPedPropSelection(currentPedCustomizationItem, propId, exactProp.Value, exactProp.Value < 0 ? -1 : 0, shiftTextureForSpPed: exactProp.Value >= 0);
+                    ApplyPedPropSelection(currentPedCustomizationItem, propId, exactProp.Value == 1 ? -1 : exactProp.Value - 2, exactProp.Value == 1 ? -1 : 0);
                 }
 
                 return;
