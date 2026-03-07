@@ -95,7 +95,7 @@ namespace vMenuClient.menus
             {
                 if (index == 5 && IsAllowed(Permission.OPUnban))
                 {
-                    if (item.Label == "Are you sure?")
+                    if (MenuLocalizer.IsConfirmationLabel(item.Label))
                     {
                         if (banlist.Contains(currentRecord))
                         {
@@ -110,7 +110,7 @@ namespace vMenuClient.menus
                     }
                     else
                     {
-                        item.Label = "Are you sure?";
+                        item.Label = MenuLocalizer.GetConfirmationLabel();
                     }
                 }
                 else

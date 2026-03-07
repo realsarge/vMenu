@@ -327,7 +327,7 @@ namespace vMenuClient.menus
                 // perm ban
                 else if (item == ban)
                 {
-                    if (ban.Label == "Are you sure?")
+                    if (MenuLocalizer.IsConfirmationLabel(ban.Label))
                     {
                         ban.Label = "";
                         _ = UpdatePlayerlist();
@@ -336,7 +336,7 @@ namespace vMenuClient.menus
                     }
                     else
                     {
-                        ban.Label = "Are you sure?";
+                        ban.Label = MenuLocalizer.GetConfirmationLabel();
                     }
                 }
             };

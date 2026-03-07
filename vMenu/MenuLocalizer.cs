@@ -1,440 +1,64 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using MenuAPI;
+
+using Newtonsoft.Json;
 
 namespace vMenuClient
 {
     internal static class MenuLocalizer
     {
-        private static readonly Dictionary<string, string> Translations = new(StringComparer.Ordinal)
+        internal sealed class LocalizationConfigFile
         {
-            ["Main Menu"] = "Главное меню",
-            ["Player Related Options"] = "Параметры игрока",
-            ["Vehicle Related Options"] = "Параметры транспорта",
-            ["World Options"] = "Параметры мира",
-            ["World Related Options"] = "Параметры мира",
-            ["Online Players"] = "Игроки онлайн",
-            ["Banned Players"] = "Забаненные игроки",
-            ["Banned Players Management"] = "Управление банами",
-            ["Player Options"] = "Параметры игрока",
-            ["Vehicle Options"] = "Параметры транспорта",
-            ["Vehicle Spawner"] = "Спавнер транспорта",
-            ["Saved Vehicles"] = "Сохраненный транспорт",
-            ["Personal Vehicle"] = "Личный транспорт",
-            ["Personal Vehicle Options"] = "Параметры личного транспорта",
-            ["Player Appearance"] = "Внешность персонажа",
-            ["MP Ped Customization"] = "Настройка MP-персонажа",
-            ["Create Character"] = "Создание персонажа",
-            ["Create A New Character"] = "Создать нового персонажа",
-            ["Create Male Character"] = "Создать мужского персонажа",
-            ["Create Female Character"] = "Создать женского персонажа",
-            ["Exit Without Saving"] = "Выйти без сохранения",
-            ["Time Options"] = "Параметры времени",
-            ["Weather Options"] = "Параметры погоды",
-            ["Weapon Options"] = "Параметры оружия",
-            ["Weapon Loadouts"] = "Наборы оружия",
-            ["weapon loadouts management"] = "Управление наборами оружия",
-            ["Voice Chat Settings"] = "Настройки голосового чата",
-            ["Recording Options"] = "Параметры записи",
-            ["Recording"] = "Запись",
-            ["Misc Settings"] = "Прочие настройки",
-            ["About vMenu"] = "О vMenu",
-            ["About vMenu / Credits"] = "О vMenu / Авторы",
-            ["Scripts"] = "Скрипты",
-            ["Police Radar"] = "Радар",
-            ["Heli Winch"] = "Лебедка",
-            ["K9 Dog"] = "Собака K9",
-            ["Spawner (World)"] = "Спавнер (Мир)",
-            ["Spawner (Vehicle)"] = "Спавнер (Авто)",
-            ["Spawner (Delete Object)"] = "Спавнер (Удалить объект)",
-            ["Traffic Control"] = "Управление трафиком",
-            ["vMenu Version"] = "Версия vMenu",
-            ["Server Info"] = "Информация о сервере",
-            ["Toggle NoClip"] = "Переключить NoClip",
-            ["NoClip"] = "NoClip",
-            ["Teleport Options"] = "Параметры телепорта",
-            ["Teleport Locations"] = "Точки телепорта",
-            ["Teleport To Waypoint"] = "Телепорт к метке",
-            ["Teleport To Coords"] = "Телепорт по координатам",
-            ["Save Teleport Location"] = "Сохранить точку телепорта",
-            ["Keybind Settings"] = "Настройки клавиш",
-            ["Teleport To Player"] = "Телепорт к игроку",
-            ["Teleport Into Player Vehicle"] = "Телепорт в транспорт игрока",
-            ["Toggle GPS"] = "Вкл/Выкл GPS",
-            ["Send Private Message"] = "Отправить личное сообщение",
-            ["Spectate Player"] = "Наблюдать за игроком",
-            ["Summon Player"] = "Призвать игрока",
-            ["Print Identifiers"] = "Показать идентификаторы",
-            ["Freeze Player"] = "Заморозить игрока",
-            ["Kick Player"] = "Кикнуть игрока",
-            ["~r~Kick Player"] = "~r~Кикнуть игрока",
-            ["~r~Ban Player Temporarily"] = "~r~Временно забанить",
-            ["~r~Ban Player Permanently"] = "~r~Забанить навсегда",
-            ["~r~Kill Player"] = "~r~Убить игрока",
-            ["~r~Commit Suicide"] = "~r~Совершить самоубийство",
-            ["~r~Unban"] = "~r~Разбанить",
-            ["Player Name"] = "Имя игрока",
-            ["Banned By"] = "Кем забанен",
-            ["Banned Until"] = "Забанен до",
-            ["Player Identifiers"] = "Идентификаторы игрока",
-            ["Banned For"] = "Причина бана",
-            ["Back"] = "Назад",
-            ["Go Back"] = "Назад",
-            ["Connection Options"] = "Параметры соединения",
-            ["Quit Session"] = "Выйти из сессии",
-            ["Re-join Session"] = "Вернуться в сессию",
-            ["Quit Game"] = "Выйти из игры",
-            ["Disconnect From Server"] = "Отключиться от сервера",
-            ["Developer Tools"] = "Инструменты разработчика",
-            ["Development Tools"] = "Инструменты разработчика",
-            ["Entity Spawner"] = "Спавнер сущностей",
-            ["Spawn New Entity"] = "Создать сущность",
-            ["Confirm Entity Position"] = "Подтвердить позицию",
-            ["Confirm Entity Position And Duplicate"] = "Подтвердить и дублировать",
-            ["Cancel"] = "Отмена",
-            ["Save Personal Settings"] = "Сохранить личные настройки",
-            ["Export/Import Data"] = "Экспорт/импорт данных",
-            ["Disable Private Messages"] = "Отключить личные сообщения",
-            ["Disable Controller Support"] = "Отключить поддержку геймпада",
-            ["Show Speed KM/H"] = "Показывать скорость км/ч",
-            ["Show Speed MPH"] = "Показывать скорость миль/ч",
-            ["Show Coordinates"] = "Показывать координаты",
-            ["Hide Radar"] = "Скрыть радар",
-            ["Hide Hud"] = "Скрыть HUD",
-            ["Location Display"] = "Отображение локации",
-            ["Show Time On Screen"] = "Показывать время на экране",
-            ["Join / Quit Notifications"] = "Уведомления входа/выхода",
-            ["Death Notifications"] = "Уведомления о смертях",
-            ["Toggle Night Vision"] = "Ночное видение",
-            ["Toggle Thermal Vision"] = "Тепловизор",
-            ["Show Vehicle Dimensions"] = "Показывать границы транспорта",
-            ["Show Prop Dimensions"] = "Показывать границы объектов",
-            ["Show Ped Dimensions"] = "Показывать границы педов",
-            ["Show Entity Handles"] = "Показывать handle сущностей",
-            ["Show Entity Models"] = "Показывать модели сущностей",
-            ["Show Network Owners"] = "Показывать владельцев сети",
-            ["Clear Area"] = "Очистить область",
-            ["Lock Camera Horizontal Rotation"] = "Заблокировать горизонтальную камеру",
-            ["Lock Camera Vertical Rotation"] = "Заблокировать вертикальную камеру",
-            ["3D MP Ped Preview"] = "3D-превью MP-персонажа",
-            ["Enable Timecycle Modifier"] = "Включить модификатор timecycle",
-            ["Location Blips"] = "Метки локаций",
-            ["Show Player Blips"] = "Показывать метки игроков",
-            ["Show Player Names"] = "Показывать имена игроков",
-            ["Respawn As Default MP Character"] = "Респавн стандартным MP-персонажем",
-            ["Restore Player Appearance"] = "Восстанавливать внешность игрока",
-            ["Restore Player Weapons"] = "Восстанавливать оружие игрока",
-            ["Right Align Menu"] = "Меню справа",
-            ["Drift Mode"] = "Режим дрифта",
-            ["Recording Controls"] = "Управление записью",
-            ["Minimap Controls"] = "Управление миникартой",
-            ["Finger Point Controls"] = "Управление указанием пальцем",
-            ["Freeze/Unfreeze Time"] = "Заморозить/разморозить время",
-            ["Early Morning"] = "Раннее утро",
-            ["Morning"] = "Утро",
-            ["Noon"] = "Полдень",
-            ["Early Afternoon"] = "Начало дня",
-            ["Afternoon"] = "День",
-            ["Evening"] = "Вечер",
-            ["Midnight"] = "Полночь",
-            ["Night"] = "Ночь",
-            ["Set Custom Hour"] = "Установить час",
-            ["Set Custom Minute"] = "Установить минуты",
-            ["Toggle Dynamic Weather"] = "Динамическая погода",
-            ["Toggle Blackout"] = "Отключение освещения",
-            ["Toggle Vehicle Lights Blackout"] = "Отключение фар транспорта",
-            ["Enable Snow Effects"] = "Включить снег",
-            ["Extra Sunny"] = "Очень ясно",
-            ["Clear"] = "Ясно",
-            ["Neutral"] = "Нейтрально",
-            ["Smog"] = "Смог",
-            ["Foggy"] = "Туман",
-            ["Cloudy"] = "Облачно",
-            ["Overcast"] = "Пасмурно",
-            ["Clearing"] = "Прояснение",
-            ["Rainy"] = "Дождь",
-            ["Thunder"] = "Гроза",
-            ["Blizzard"] = "Метель",
-            ["Snow"] = "Снег",
-            ["Light Snow"] = "Легкий снег",
-            ["X-MAS Snow"] = "Рождественский снег",
-            ["Halloween"] = "Хэллоуин",
-            ["Randomize Clouds"] = "Случайные облака",
-            ["Remove All Clouds"] = "Убрать все облака",
-            ["Get All Weapons"] = "Выдать все оружие",
-            ["Remove All Weapons"] = "Убрать все оружие",
-            ["Unlimited Ammo"] = "Бесконечные патроны",
-            ["No Reload"] = "Без перезарядки",
-            ["Set All Ammo Count"] = "Задать боезапас",
-            ["Refill All Ammo"] = "Пополнить все патроны",
-            ["Spawn Weapon By Name"] = "Выдать оружие по названию",
-            ["Addon Weapons"] = "Доп. оружие",
-            ["Equip/Remove Addon Weapons"] = "Выдать/убрать доп. оружие",
-            ["Equip/Remove Weapon"] = "Выдать/убрать оружие",
-            ["Re-fill Ammo"] = "Пополнить патроны",
-            ["Parachute Options"] = "Параметры парашюта",
-            ["Toggle Primary Parachute"] = "Основной парашют",
-            ["Enable Reserve Parachute"] = "Запасной парашют",
-            ["Primary Chute Style"] = "Стиль основного парашюта",
-            ["Reserve Chute Style"] = "Стиль запасного парашюта",
-            ["Unlimited Parachutes"] = "Бесконечные парашюты",
-            ["Auto Equip Parachutes"] = "Автовыдача парашютов",
-            ["Smoke Trail Color"] = "Цвет дымового следа",
-            ["Handguns"] = "Пистолеты",
-            ["Assault Rifles"] = "Штурмовые винтовки",
-            ["Shotguns"] = "Дробовики",
-            ["Sub-/Light Machine Guns"] = "ПП / пулеметы",
-            ["Throwables"] = "Метательное",
-            ["Melee"] = "Ближний бой",
-            ["Heavy Weapons"] = "Тяжелое оружие",
-            ["Sniper Rifles"] = "Снайперские винтовки",
-            ["Weapons"] = "Оружие",
-            ["Tints"] = "Расцветки",
-            ["Save Loadout"] = "Сохранить набор",
-            ["Manage Loadouts"] = "Управлять наборами",
-            ["Restore Default Loadout On Respawn"] = "Восстанавливать набор при респавне",
-            ["Equip Loadout"] = "Выдать набор",
-            ["Rename Loadout"] = "Переименовать набор",
-            ["Clone Loadout"] = "Клонировать набор",
-            ["Set As Default Loadout"] = "Сделать набором по умолчанию",
-            ["~r~Replace Loadout"] = "~r~Заменить набор",
-            ["~r~Delete Loadout"] = "~r~Удалить набор",
-            ["Saved Characters"] = "Сохраненные персонажи",
-            ["Spawn Saved Character"] = "Загрузить персонажа",
-            ["Save Character"] = "Сохранить персонажа",
-            ["Randomize Character"] = "Случайный персонаж",
-            ["Delete All Characters"] = "Удалить всех персонажей",
-            ["Edit Saved Character"] = "Редактировать персонажа",
-            ["Rename Saved Character"] = "Переименовать персонажа",
-            ["Clone Saved Character"] = "Клонировать персонажа",
-            ["Delete Saved Character"] = "Удалить персонажа",
-            ["Set As Default Character"] = "Сделать стандартным персонажем",
-            ["Character Appearance"] = "Внешность",
-            ["Character Face Shape Options"] = "Форма лица",
-            ["Character Inheritance"] = "Наследование",
-            ["Character Clothes"] = "Одежда",
-            ["Character Props"] = "Аксессуары",
-            ["Character Tattoo Options"] = "Татуировки",
-            ["Character Clothing Options"] = "Одежда персонажа",
-            ["Copy Outfit Code"] = "Скопировать код одежды",
-            ["Set Character Category"] = "Задать категорию персонажа",
-            ["Character Category"] = "Категория персонажа",
-            ["Facial Expression"] = "Выражение лица",
-            ["Save Ped"] = "Сохранить педа",
-            ["Saved Peds"] = "Сохраненные педы",
-            ["Saved Ped"] = "Сохраненный пед",
-            ["Spawn Saved Ped"] = "Загрузить педа",
-            ["Clone Saved Ped"] = "Клонировать педа",
-            ["Rename Saved Ped"] = "Переименовать педа",
-            ["~r~Replace Saved Ped"] = "~r~Заменить педа",
-            ["~r~Delete Saved Ped"] = "~r~Удалить педа",
-            ["Update Character Clothing"] = "Обновить одежду персонажа",
-            ["Ped Customization"] = "Настройка педа",
-            ["Ped Collections"] = "Коллекции педов",
-            ["Addon Peds"] = "Доп. педы",
-            ["Main Peds"] = "Основные педы",
-            ["Male Peds"] = "Мужские педы",
-            ["Female Peds"] = "Женские педы",
-            ["Animals"] = "Животные",
-            ["Other Peds"] = "Другие педы",
-            ["Spawn Peds"] = "Спавн педов",
-            ["Spawn Ped"] = "Спавн педа",
-            ["Manage Saved Vehicles"] = "Управление сохраненным транспортом",
-            ["Save Current Vehicle"] = "Сохранить текущий транспорт",
-            ["Spawn Vehicle"] = "Заспавнить транспорт",
-            ["Rename Vehicle"] = "Переименовать транспорт",
-            ["Delete Vehicle"] = "Удалить транспорт",
-            ["Delete All Vehicles"] = "Удалить весь транспорт",
-            ["~r~Delete Vehicle"] = "~r~Удалить транспорт",
-            ["~r~Replace Vehicle"] = "~r~Заменить транспорт",
-            ["Unavailable Saved Vehicles"] = "Недоступный сохраненный транспорт",
-            ["Vehicle Category"] = "Категория транспорта",
-            ["Vehicle Class"] = "Класс транспорта",
-            ["Spawn Vehicle By Model Name"] = "Спавн по названию модели",
-            ["Spawn By Name"] = "Спавн по названию",
-            ["Spawn Inside Vehicle"] = "Сразу в транспорт",
-            ["Replace Previous Vehicle"] = "Заменять прошлый транспорт",
-            ["Addon Vehicles"] = "Доп. транспорт",
-            ["Unavailable Vehicles"] = "Недоступный транспорт",
-            ["Set Vehicle"] = "Назначить транспорт",
-            ["Vehicle auto pilot options."] = "Параметры автопилота транспорта",
-            ["Auto Pilot"] = "Автопилот",
-            ["Drive To Waypoint"] = "Ехать к метке",
-            ["Drive Around Randomly"] = "Кататься случайно",
-            ["Force Stop Driving"] = "Принудительно остановить",
-            ["Custom Driving Style"] = "Свой стиль вождения",
-            ["Driving Style"] = "Стиль вождения",
-            ["Exclusive Driver"] = "Только водитель",
-            ["Stay In Vehicle"] = "Оставаться в транспорте",
-            ["Engine Always On"] = "Двигатель всегда включен",
-            ["Disable Siren"] = "Отключить сирену",
-            ["Disable Helicopter Turbulence"] = "Отключить турбулентность вертолета",
-            ["Disable Plane Turbulence"] = "Отключить турбулентность самолета",
-            ["Flash Highbeams On Honk"] = "Моргать дальним по сигналу",
-            ["Infinite Fuel"] = "Бесконечное топливо",
-            ["Bike Seatbelt"] = "Ремень на мотоцикле",
-            ["Anchor Boat"] = "Бросить якорь",
-            ["Speed Limiter"] = "Ограничитель скорости",
-            ["Keep Vehicle Clean"] = "Сохранять транспорт чистым",
-            ["Engine Damage"] = "Повреждение двигателя",
-            ["Ramp Damage"] = "Повреждение рампы",
-            ["Strong Wheels"] = "Прочные колеса",
-            ["Allow Power Multiplier"] = "Разрешить множитель мощности",
-            ["Enable Power Multiplier"] = "Включить множитель мощности",
-            ["Enable Torque Multiplier"] = "Включить множитель крутящего момента",
-            ["Set Engine Power Multiplier"] = "Задать множитель мощности",
-            ["Set Engine Torque Multiplier"] = "Задать множитель крутящего момента",
-            ["Vehicle God Mode"] = "Бессмертие транспорта",
-            ["Vehicle Godmode"] = "Бессмертие транспорта",
-            ["God Mode Options"] = "Параметры бессмертия",
-            ["Godmode"] = "Бессмертие",
-            ["Invincible"] = "Неуязвимость",
-            ["Invisible"] = "Невидимость",
-            ["Seatbelt"] = "Ремень безопасности",
-            ["Auto Repair"] = "Авторемонт",
-            ["Freeze Vehicle"] = "Заморозить транспорт",
-            ["Toggle Vehicle Visibility"] = "Видимость транспорта",
-            ["Fix / Destroy Tires"] = "Починить / уничтожить шины",
-            ["Burst Tires"] = "Проколоть шины",
-            ["Flip Vehicle"] = "Перевернуть транспорт",
-            ["Repair Vehicle"] = "Починить транспорт",
-            ["Wash Vehicle"] = "Помыть транспорт",
-            ["Destroy Engine"] = "Уничтожить двигатель",
-            ["Clean Player Clothes"] = "Очистить одежду игрока",
-            ["Dry Player Clothes"] = "Высушить одежду игрока",
-            ["Wet Player Clothes"] = "Намочить одежду игрока",
-            ["Vehicle Doors"] = "Двери транспорта",
-            ["Vehicle Doors Management"] = "Управление дверями",
-            ["Open All Doors"] = "Открыть все двери",
-            ["Close All Doors"] = "Закрыть все двери",
-            ["Left Front Door"] = "Передняя левая дверь",
-            ["Right Front Door"] = "Передняя правая дверь",
-            ["Left Rear Door"] = "Задняя левая дверь",
-            ["Right Rear Door"] = "Задняя правая дверь",
-            ["Hood"] = "Капот",
-            ["Trunk"] = "Багажник",
-            ["Extra 1"] = "Доп. 1",
-            ["Extra 2"] = "Доп. 2",
-            ["Bomb Bay"] = "Бомболюк",
-            ["Remove Door"] = "Снять дверь",
-            ["Delete Removed Doors"] = "Удалять снятые двери",
-            ["Vehicle Windows"] = "Окна транспорта",
-            ["Vehicle Windows Management"] = "Управление окнами",
-            ["Window Tint"] = "Тонировка",
-            ["Vehicle Colors"] = "Цвета транспорта",
-            ["Primary Color"] = "Основной цвет",
-            ["Secondary Color"] = "Вторичный цвет",
-            ["Pearlescent"] = "Перламутр",
-            ["Wheel Color"] = "Цвет колес",
-            ["Dashboard Color"] = "Цвет панели",
-            ["Interior / Trim Color"] = "Цвет салона / отделки",
-            ["Custom RGB"] = "Свой RGB",
-            ["Preset Colors"] = "Готовые цвета",
-            ["Classic"] = "Классические",
-            ["Metallic"] = "Металлик",
-            ["Matte"] = "Матовые",
-            ["Metals"] = "Металлы",
-            ["Chrome"] = "Хром",
-            ["Util"] = "Утилитарные",
-            ["Worn"] = "Изношенные",
-            ["Chameleon"] = "Хамелеон",
-            ["Customize Colors"] = "Настроить цвета",
-            ["Vehicle Liveries"] = "Ливреи транспорта",
-            ["Set Livery"] = "Выбрать ливрею",
-            ["No Liveries Available :("] = "Ливреи недоступны :(",
-            ["Vehicle Extras"] = "Экстры транспорта",
-            ["Vehicle Extras/Components"] = "Экстры / компоненты",
-            ["No Extras Available :("] = "Экстры недоступны :(",
-            ["Vehicle Neon Kits"] = "Неоновая подсветка",
-            ["Vehicle Neon Underglow Options"] = "Параметры неоновой подсветки",
-            ["Enable Front Light"] = "Передний неон",
-            ["Enable Rear Light"] = "Задний неон",
-            ["Enable Left Light"] = "Левый неон",
-            ["Enable Right Light"] = "Правый неон",
-            ["Headlight Color"] = "Цвет фар",
-            ["Wheel Type"] = "Тип колес",
-            ["Toggle Custom Wheels"] = "Кастомные колеса",
-            ["Xenon Headlights"] = "Ксеноновые фары",
-            ["Turbo"] = "Турбо",
-            ["Bullet Proof Tires"] = "Пуленепробиваемые шины",
-            ["Low Grip Tires"] = "Шины с низким сцеплением",
-            ["Tire Smoke"] = "Дым из шин",
-            ["Tire Smoke Color"] = "Цвет дыма из шин",
-            ["Open Gallery"] = "Открыть галерею",
-            ["Take Photo"] = "Сделать фото",
-            ["Start Recording"] = "Начать запись",
-            ["Stop Recording"] = "Остановить запись",
-            ["Rockstar Editor"] = "Редактор Rockstar",
-            ["Enable Voice Chat"] = "Включить голосовой чат",
-            ["Show Current Speaker"] = "Показывать говорящего",
-            ["Show Microphone Status"] = "Показывать статус микрофона",
-            ["Voice Chat Channel"] = "Канал голосового чата",
-            ["Walking Style"] = "Стиль походки",
-            ["Illuminated Clothing Style"] = "Стиль подсветки одежды",
-            ["Normal"] = "Обычный",
-            ["Happy"] = "Счастливый",
-            ["Angry"] = "Злой",
-            ["Aiming"] = "Прицеливание",
-            ["Injured"] = "Раненый",
-            ["Stressed"] = "Напряженный",
-            ["Smug"] = "Самодовольный",
-            ["Sulk"] = "Угрюмый",
-            ["Tough Guy"] = "Крутой",
-            ["Femme"] = "Женственный",
-            ["Gangster"] = "Гангстер",
-            ["Posh"] = "Элегантный",
-            ["Sexy"] = "Сексуальный",
-            ["Business"] = "Деловой",
-            ["Drunk"] = "Пьяный",
-            ["Hipster"] = "Хипстер",
-            ["On"] = "Вкл",
-            ["Off"] = "Выкл",
-            ["Fade"] = "Затухание",
-            ["Flash"] = "Мигание",
-            ["TM"] = "ТЦ",
-            ["Confirm Action"] = "Подтвердить действие",
-            ["~r~YES, DELETE"] = "~r~ДА, УДАЛИТЬ",
-            ["NO, CANCEL"] = "НЕТ, ОТМЕНА",
-            ["Are you sure?"] = "Вы уверены?",
-            ["Current Vehicle"] = "Текущий траспорт",
-            ["None"] = "Отсутствует",
-            ["No Ragdoll"] = "Отключить Ragdoll",
-            ["Never Wanted"] = "Отключить розыск",
-            ["Everyone Ignore Player"] = "НПС игнорируют игрока",
-            ["Clear Blood"] = "Очистить кровь",
-            ["Set Blood Level"] = "Установить уровень крови",
-            ["Heal Player"] = "Восстановить здоровье",
-            ["Set Armor Type"] = "Установить бронежилет",
-            ["Player Scenarios"] = "Сценарии для игрока",
-            ["Force Stop Scenario"] = "Остановить сценарий",
-            ["Create Category"] = "Создать категорию",
-            ["Uncategorized"] = "Без категории",
-            ["Rename Category"] = "Переименновать категорию",
-            ["Change Category Description"] = "Поменять описание категории",
-            ["Change Category Icon"] = "Поменять иконку категории",
-            ["Delete Category"] = "Удалить категорию",
-            ["No Bike Helmet"] = "Без шлема на мотоцикле",
-            ["Show Vehicle Health"] = "Показать состояние транспорта",
-            ["Default radio station"] = "Станция радио по умолчанию",
-            ["Vehicle Lights"] = "Управлять светом транспорта",
-            ["Cycle Through Vehicle Seats"] = "Переключиться между местами в транспорте",
-            ["Set License Plate Text"] = "Установить текст номерного знака",
-            ["License Plate Type"] = "Тип номерного знака",
-            ["Toggle Vehicle Alarm"] = "Вкл/Выкл сигнализацию транспорта",
-            ["Set Dirt Level"] = "Установить уровень грязи",
-            ["Mod Menu"] = "Меню модификаций",
-            ["Toggle Engine On/Off"] = "Заглушить/Завести двигатель",
-            ["Toggle Engine"] = "Заглушить/Завести двигатель",
-            ["Set Vehicle Lights"] = "Установить свет в транспорте",
-            ["Vehicle Stance"] = "Позиция транспорта",
-            ["Kick Passengers"] = "Высадить пассажиров",
-            ["Lock Vehicle Doors"] = "Заблокировать двери транспорта",
-            ["Unlock Vehicle Doors"] = "Разблокировать двери транспорта",
-            ["Sound Horn"] = "Подать звуковой сигнал",
-            ["Toggle Alarm Sound"] = "Вкл/Выкл звук сигнализации",
-            ["Add Blip For Personal Vehicle"] = "Добавить метку на личный транспорт",
-        };
+            public Dictionary<string, string> menu { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+            public Dictionary<string, string> notifications { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        private const string ConfirmationLabelText = "Are you sure?";
+        private const string DangerPrefix = "~r~";
+        private static readonly Dictionary<string, string> MenuTranslations = new(StringComparer.Ordinal);
+        private static readonly Dictionary<string, string> NotificationTranslations = new(StringComparer.Ordinal);
+
+        internal static void SetTranslations(string jsonData)
+        {
+            MenuTranslations.Clear();
+            NotificationTranslations.Clear();
+
+            if (string.IsNullOrWhiteSpace(jsonData))
+            {
+                return;
+            }
+
+            try
+            {
+                var config = JsonConvert.DeserializeObject<LocalizationConfigFile>(jsonData) ?? new LocalizationConfigFile();
+                ReplaceTranslations(MenuTranslations, config.menu);
+                ReplaceTranslations(NotificationTranslations, config.notifications);
+            }
+            catch (JsonException)
+            {
+            }
+        }
+
+        private static void ReplaceTranslations(Dictionary<string, string> target, Dictionary<string, string> source)
+        {
+            if (source == null)
+            {
+                return;
+            }
+
+            foreach (var entry in source)
+            {
+                if (string.IsNullOrWhiteSpace(entry.Key) || string.IsNullOrWhiteSpace(entry.Value))
+                {
+                    continue;
+                }
+
+                target[entry.Key] = entry.Value;
+            }
+        }
 
         internal static void LocalizeAllMenus()
         {
@@ -453,8 +77,8 @@ namespace vMenuClient
 
             var menuTitle = menu.MenuTitle;
             var menuSubtitle = menu.MenuSubtitle;
-            var translatedMenuTitle = Translate(menuTitle);
-            var translatedMenuSubtitle = Translate(menuSubtitle);
+            var translatedMenuTitle = TranslateMenuText(menuTitle);
+            var translatedMenuSubtitle = TranslateMenuText(menuSubtitle);
             var keepDescriptions =
                 IsMpCharacterMenu(menuTitle) ||
                 IsMpCharacterMenu(menuSubtitle) ||
@@ -466,7 +90,7 @@ namespace vMenuClient
 
             foreach (var item in menu.GetMenuItems())
             {
-                item.Text = Translate(item.Text);
+                item.Text = TranslateMenuText(item.Text);
                 item.Label = TranslateLabel(item.Label);
                 if (!keepDescriptions)
                 {
@@ -477,40 +101,70 @@ namespace vMenuClient
                 {
                     for (var i = 0; i < listItem.ListItems.Count; i++)
                     {
-                        listItem.ListItems[i] = Translate(listItem.ListItems[i]);
+                        listItem.ListItems[i] = TranslateMenuText(listItem.ListItems[i]);
                     }
                 }
             }
         }
 
-        private static bool IsMpCharacterMenu(string text)
+        internal static string TranslateNotificationText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            if (NotificationTranslations.TryGetValue(text, out var translated))
+            {
+                return translated;
+            }
+
+            const string spectatingPrefix = "You are now spectating ";
+            if (text.StartsWith(spectatingPrefix, StringComparison.Ordinal) && text.EndsWith(".", StringComparison.Ordinal))
+            {
+                var playerName = text.Substring(spectatingPrefix.Length).TrimEnd('.');
+                return $"Р’С‹ С‚РµРїРµСЂСЊ РЅР°Р±Р»СЋРґР°РµС‚Рµ Р·Р° {playerName}.";
+            }
+
+            return text;
+        }
+
+        internal static string GetConfirmationLabel(bool danger = false)
+        {
+            var translated = TranslateMenuText(ConfirmationLabelText);
+            return danger ? $"{DangerPrefix}{translated}" : translated;
+        }
+
+        internal static bool IsConfirmationLabel(string text, bool danger = false)
         {
             if (string.IsNullOrEmpty(text))
             {
                 return false;
             }
 
-            return text == "MP Ped Customization" ||
-                   text == "Create A New Character" ||
-                   text == "Manage Saved Characters" ||
-                   text == "Character Inheritance Options" ||
-                   text == "Character Appearance Options" ||
-                   text == "Character Face Shape Options" ||
-                   text == "Character Tattoo Options" ||
-                   text == "Character Clothing Options" ||
-                   text == "Character Props Options" ||
-                   text == "Manage MP Character" ||
-                   text == "I get updated at runtime!" ||
-                   text == "Настройка MP-персонажа" ||
-                   text == "Создать нового персонажа" ||
-                   text == "Управление сохраненными персонажами" ||
-                   text == "Наследование персонажа" ||
-                   text == "Внешность персонажа" ||
-                   text == "Форма лица" ||
-                   text == "Татуировки" ||
-                   text == "Одежда персонажа" ||
-                   text == "Аксессуары персонажа" ||
-                   text == "Управление MP-персонажем";
+            var original = danger ? $"{DangerPrefix}{ConfirmationLabelText}" : ConfirmationLabelText;
+            return string.Equals(text, original, StringComparison.Ordinal) ||
+                   string.Equals(text, GetConfirmationLabel(danger), StringComparison.Ordinal);
+        }
+
+        internal static string TranslateMenuText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            if (MenuTranslations.TryGetValue(text, out var translated))
+            {
+                return translated;
+            }
+
+            if (text.StartsWith("Voice Chat Proximity (", StringComparison.Ordinal))
+            {
+                return "Р”Р°Р»СЊРЅРѕСЃС‚СЊ РіРѕР»РѕСЃРѕРІРѕРіРѕ С‡Р°С‚Р° (" + text.Substring("Voice Chat Proximity (".Length);
+            }
+
+            return text;
         }
 
         private static string TranslateLabel(string text)
@@ -520,27 +174,44 @@ namespace vMenuClient
                 return text;
             }
 
-            return text == "Are you sure?" ? "Вы уверены?" : text;
-        }
-
-        private static string Translate(string text)
-        {
-            if (string.IsNullOrEmpty(text))
+            if (string.Equals(text, ConfirmationLabelText, StringComparison.Ordinal))
             {
-                return text;
+                return GetConfirmationLabel();
             }
 
-            if (Translations.TryGetValue(text, out var translated))
+            if (string.Equals(text, $"{DangerPrefix}{ConfirmationLabelText}", StringComparison.Ordinal))
             {
-                return translated;
-            }
-
-            if (text.StartsWith("Voice Chat Proximity (", StringComparison.Ordinal))
-            {
-                return "Дальность голосового чата (" + text.Substring("Voice Chat Proximity (".Length);
+                return GetConfirmationLabel(true);
             }
 
             return text;
+        }
+
+        private static bool IsMpCharacterMenu(string text)
+        {
+            return MatchesMenuName(text, "MP Ped Customization")
+                   || MatchesMenuName(text, "Create A New Character")
+                   || MatchesMenuName(text, "Manage Saved Characters")
+                   || MatchesMenuName(text, "Character Inheritance Options")
+                   || MatchesMenuName(text, "Character Appearance Options")
+                   || MatchesMenuName(text, "Character Face Shape Options")
+                   || MatchesMenuName(text, "Character Tattoo Options")
+                   || MatchesMenuName(text, "Character Clothing Options")
+                   || MatchesMenuName(text, "Character Props Options")
+                   || MatchesMenuName(text, "Manage MP Character")
+                   || MatchesMenuName(text, "I get updated at runtime!")
+                   || MatchesMenuName(text, "Outfit Presets");
+        }
+
+        private static bool MatchesMenuName(string text, string englishName)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+
+            return string.Equals(text, englishName, StringComparison.Ordinal)
+                   || string.Equals(text, TranslateMenuText(englishName), StringComparison.Ordinal);
         }
     }
 }

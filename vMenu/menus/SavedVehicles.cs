@@ -340,7 +340,7 @@ namespace vMenuClient.menus
 
                     // Delete Category
                     case 3:
-                        if (item.Label == "Are you sure?")
+                        if (MenuLocalizer.IsConfirmationLabel(item.Label))
                         {
                             bool deleteVehicles = (sender.GetMenuItems().ElementAt(4) as MenuCheckboxItem).Checked;
 
@@ -399,7 +399,7 @@ namespace vMenuClient.menus
                         }
                         else
                         {
-                            item.Label = "Are you sure?";
+                            item.Label = MenuLocalizer.GetConfirmationLabel();
                         }
                         break;
 
@@ -640,7 +640,7 @@ namespace vMenuClient.menus
                         var item = m.GetMenuItems().Find(i => i.Index == index);
                         if (item != null && item.ItemData is KeyValuePair<string, VehicleInfo> sd)
                         {
-                            if (item.Label == "~r~Are you sure?")
+                            if (MenuLocalizer.IsConfirmationLabel(item.Label, true))
                             {
                                 Log("Unavailable saved vehicle deleted, data: " + JsonConvert.SerializeObject(sd));
                                 DeleteResourceKvp(sd.Key);
@@ -649,7 +649,7 @@ namespace vMenuClient.menus
                             }
                             else
                             {
-                                item.Label = "~r~Are you sure?";
+                                item.Label = MenuLocalizer.GetConfirmationLabel(true);
                             }
                         }
                         else

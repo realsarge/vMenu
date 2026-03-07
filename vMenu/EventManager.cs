@@ -53,6 +53,7 @@ namespace vMenuClient
             EventHandlers.Add("vMenu:SendCharacterNames", new Action<string>(SendCharacterNames));
             EventHandlers.Add("vMenu:RefreshCharacterNames", new Action(RefreshCharacterNames));
             EventHandlers.Add("vMenu:SetFitPresets", new Action<string>(SetFitPresets));
+            EventHandlers.Add("vMenu:SetMenuLocalization", new Action<string>(SetMenuLocalization));
 
             if (GetSettingsBool(Setting.vmenu_enable_weather_sync))
             {
@@ -123,6 +124,7 @@ namespace vMenuClient
             SetAddons();
             SetExtras();
             TriggerServerEvent("vMenu:RequestFitPresets");
+            TriggerServerEvent("vMenu:RequestMenuLocalization");
 
             MainMenu.ConfigOptionsSetupComplete = true;
         }
@@ -130,6 +132,12 @@ namespace vMenuClient
         private static void SetFitPresets(string jsonData)
         {
             menus.MpPedCustomization.SetServerFitPresets(jsonData);
+        }
+
+        private static void SetMenuLocalization(string jsonData)
+        {
+            MenuLocalizer.SetTranslations(jsonData);
+            MenuLocalizer.LocalizeAllMenus();
         }
 
         /// <summary>

@@ -222,7 +222,7 @@ namespace vMenuClient.menus
                     }
                     else if (item == replaceLoadout) // replace
                     {
-                        if (replaceLoadout.Label == "Are you sure?")
+                        if (MenuLocalizer.IsConfirmationLabel(replaceLoadout.Label))
                         {
                             replaceLoadout.Label = "";
                             SaveWeaponLoadout(SelectedSavedLoadoutName);
@@ -231,12 +231,12 @@ namespace vMenuClient.menus
                         }
                         else
                         {
-                            replaceLoadout.Label = "Are you sure?";
+                            replaceLoadout.Label = MenuLocalizer.GetConfirmationLabel();
                         }
                     }
                     else if (item == deleteLoadout) // delete
                     {
-                        if (deleteLoadout.Label == "Are you sure?")
+                        if (MenuLocalizer.IsConfirmationLabel(deleteLoadout.Label))
                         {
                             deleteLoadout.Label = "";
                             DeleteResourceKvp(SelectedSavedLoadoutName);
@@ -245,7 +245,7 @@ namespace vMenuClient.menus
                         }
                         else
                         {
-                            deleteLoadout.Label = "Are you sure?";
+                            deleteLoadout.Label = MenuLocalizer.GetConfirmationLabel();
                         }
                     }
                 }

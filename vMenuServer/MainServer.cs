@@ -60,10 +60,17 @@ namespace vMenuServer
     public class MainServer : BaseScript
     {
         private const string FitPresetsConfigPath = "config/fit_presets.json";
+        private const string MenuLocalizationConfigPath = "config/menu_localizer.json";
 
         private sealed class FitPresetConfigFile
         {
             public List<FitPresetDefinition> presets { get; set; } = new List<FitPresetDefinition>();
+        }
+
+        private sealed class MenuLocalizationConfigFile
+        {
+            public Dictionary<string, string> menu { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+            public Dictionary<string, string> notifications { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
         }
 
         public sealed class FitPresetDefinition
@@ -80,6 +87,7 @@ namespace vMenuServer
 
         public static string Version { get { return GetResourceMetadata(GetCurrentResourceName(), "version", 0); } }
         public static string FitPresetsJson { get; private set; } = "[]";
+        public static string MenuLocalizationJson { get; private set; } = "{\"menu\":{},\"notifications\":{}}";
 
         // Time
         private int CurrentHours
@@ -239,6 +247,7 @@ namespace vMenuServer
                     CallbackFunction(JsonConvert.SerializeObject(data));
                 }));
                 EventHandlers.Add("vMenu:RequestFitPresets", new Action<Player>(OnRequestFitPresets));
+                EventHandlers.Add("vMenu:RequestMenuLocalization", new Action<Player>(OnRequestMenuLocalization));
 
                 // check addons file for errors
                 var addons = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
@@ -265,6 +274,7 @@ namespace vMenuServer
                 }
 
                 LoadFitPresets();
+                LoadMenuLocalization();
 
                 // check if permissions are setup (correctly)
                 if (!GetSettingsBool(Setting.vmenu_use_permissions))
@@ -1152,6 +1162,7 @@ namespace vMenuServer
 
                 PermissionsManager.SetPermissionsForPlayer(player);
                 SendFitPresetsToPlayer(player);
+                SendMenuLocalizationToPlayer(player);
             }
         }
 
@@ -1162,6 +1173,7 @@ namespace vMenuServer
 
             PermissionsManager.SetPermissionsForPlayer(sourcePlayer);
             SendFitPresetsToPlayer(sourcePlayer);
+            SendMenuLocalizationToPlayer(sourcePlayer);
 
             string sourcePlayerName = sourcePlayer.Name;
 
@@ -1206,9 +1218,24 @@ namespace vMenuServer
             player.TriggerEvent("vMenu:SetFitPresets", FitPresetsJson);
         }
 
+        private static void SendMenuLocalizationToPlayer(Player player)
+        {
+            if (player == null)
+            {
+                return;
+            }
+
+            player.TriggerEvent("vMenu:SetMenuLocalization", MenuLocalizationJson);
+        }
+
         private void OnRequestFitPresets([FromSource] Player sourcePlayer)
         {
             SendFitPresetsToPlayer(sourcePlayer);
+        }
+
+        private void OnRequestMenuLocalization([FromSource] Player sourcePlayer)
+        {
+            SendMenuLocalizationToPlayer(sourcePlayer);
         }
 
         private static void LoadFitPresets()
@@ -1274,6 +1301,38 @@ namespace vMenuServer
             {
                 FitPresetsJson = "[]";
                 Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your {FitPresetsConfigPath} file contains a problem! Error details: {ex.Message}\n\n");
+            }
+        }
+
+        private static void LoadMenuLocalization()
+        {
+            var localizationFile = LoadResourceFile(GetCurrentResourceName(), MenuLocalizationConfigPath);
+            if (string.IsNullOrWhiteSpace(localizationFile))
+            {
+                MenuLocalizationJson = "{\"menu\":{},\"notifications\":{}}";
+                Debug.WriteLine($"^3[vMenu] [WARNING]^7 {MenuLocalizationConfigPath} was not found in the running resource.");
+                return;
+            }
+
+            try
+            {
+                var parsedFile = JsonConvert.DeserializeObject<MenuLocalizationConfigFile>(localizationFile) ?? new MenuLocalizationConfigFile();
+                var sanitizedFile = new MenuLocalizationConfigFile
+                {
+                    menu = (parsedFile.menu ?? new Dictionary<string, string>(StringComparer.Ordinal))
+                        .Where(entry => !string.IsNullOrWhiteSpace(entry.Key) && !string.IsNullOrWhiteSpace(entry.Value))
+                        .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal),
+                    notifications = (parsedFile.notifications ?? new Dictionary<string, string>(StringComparer.Ordinal))
+                        .Where(entry => !string.IsNullOrWhiteSpace(entry.Key) && !string.IsNullOrWhiteSpace(entry.Value))
+                        .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal)
+                };
+
+                MenuLocalizationJson = JsonConvert.SerializeObject(sanitizedFile);
+            }
+            catch (JsonException ex)
+            {
+                MenuLocalizationJson = "{\"menu\":{},\"notifications\":{}}";
+                Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your {MenuLocalizationConfigPath} file contains a problem! Error details: {ex.Message}\n\n");
             }
         }
 

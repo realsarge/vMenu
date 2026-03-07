@@ -2888,7 +2888,7 @@ namespace vMenuClient.menus
                 }
                 else if (item == saveCurrentPedAsCharacter)
                 {
-                    if (saveCurrentPedAsCharacter.Label == "Are you sure?")
+                    if (MenuLocalizer.IsConfirmationLabel(saveCurrentPedAsCharacter.Label))
                     {
                         saveCurrentPedAsCharacter.Label = "";
                         var tmpCharacter = StorageManager.GetSavedMpCharacterData("mp_ped_" + selectedSavedCharacterManageName);
@@ -2907,12 +2907,12 @@ namespace vMenuClient.menus
                     }
                     else
                     {
-                        saveCurrentPedAsCharacter.Label = "Are you sure?";
+                        saveCurrentPedAsCharacter.Label = MenuLocalizer.GetConfirmationLabel();
                     }
                 }
                 else if (item == delPed)
                 {
-                    if (delPed.Label == "Are you sure?")
+                    if (MenuLocalizer.IsConfirmationLabel(delPed.Label))
                     {
                         delPed.Label = "";
                         DeleteResourceKvp("mp_ped_" + selectedSavedCharacterManageName);
@@ -2923,7 +2923,7 @@ namespace vMenuClient.menus
                     }
                     else
                     {
-                        delPed.Label = "Are you sure?";
+                        delPed.Label = MenuLocalizer.GetConfirmationLabel();
                     }
                 }
                 else if (item == setAsDefaultPed)
@@ -2934,7 +2934,7 @@ namespace vMenuClient.menus
 
                 if (item != delPed)
                 {
-                    if (delPed.Label == "Are you sure?")
+                    if (MenuLocalizer.IsConfirmationLabel(delPed.Label))
                     {
                         delPed.Label = "";
                     }
@@ -2942,7 +2942,7 @@ namespace vMenuClient.menus
 
                 if (item != saveCurrentPedAsCharacter)
                 {
-                    if (saveCurrentPedAsCharacter.Label == "Are you sure?")
+                    if (MenuLocalizer.IsConfirmationLabel(saveCurrentPedAsCharacter.Label))
                     {
                         saveCurrentPedAsCharacter.Label = "";
                     }
@@ -3017,7 +3017,7 @@ namespace vMenuClient.menus
             {
                 foreach (MenuItem item in manageSavedCharacterMenu.GetMenuItems())
                 {
-                    if (item.Label == "Are you sure?")
+                    if (MenuLocalizer.IsConfirmationLabel(item.Label))
                     {
                         item.Label = "";
                     }
@@ -3341,7 +3341,7 @@ namespace vMenuClient.menus
 
                     // Delete Category
                     case 3:
-                        if (item.Label == "Are you sure?")
+                        if (MenuLocalizer.IsConfirmationLabel(item.Label))
                         {
                             bool deletePeds = (sender.GetMenuItems().ElementAt(4) as MenuCheckboxItem).Checked;
 
@@ -3401,7 +3401,7 @@ namespace vMenuClient.menus
                         }
                         else
                         {
-                            item.Label = "Are you sure?";
+                            item.Label = MenuLocalizer.GetConfirmationLabel();
                         }
                         break;
 
