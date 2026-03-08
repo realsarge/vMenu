@@ -68,6 +68,11 @@ namespace vMenuClient
             }
         }
 
+        internal static void LocalizeMenuInstance(Menu menu)
+        {
+            LocalizeMenu(menu);
+        }
+
         private static void LocalizeMenu(Menu menu)
         {
             if (menu == null)
