@@ -128,7 +128,7 @@ namespace vMenuClient
             if (text.StartsWith(spectatingPrefix, StringComparison.Ordinal) && text.EndsWith(".", StringComparison.Ordinal))
             {
                 var playerName = text.Substring(spectatingPrefix.Length).TrimEnd('.');
-                return $"Р’С‹ С‚РµРїРµСЂСЊ РЅР°Р±Р»СЋРґР°РµС‚Рµ Р·Р° {playerName}.";
+                return $"Наблюдение за игроком {playerName}.";
             }
 
             return text;
@@ -166,7 +166,7 @@ namespace vMenuClient
 
             if (text.StartsWith("Voice Chat Proximity (", StringComparison.Ordinal))
             {
-                return "Р”Р°Р»СЊРЅРѕСЃС‚СЊ РіРѕР»РѕСЃРѕРІРѕРіРѕ С‡Р°С‚Р° (" + text.Substring("Voice Chat Proximity (".Length);
+                return "Дальность голосового чата (" + text.Substring("Voice Chat Proximity (".Length);
             }
 
             return text;
