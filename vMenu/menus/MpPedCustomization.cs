@@ -373,6 +373,21 @@ namespace vMenuClient.menus
             RefreshFitPresetsMenu();
         }
 
+        internal bool IsAnyFitPresetMenuVisible()
+        {
+            return fitPresetsMenu.Visible || fitPresetFolderMenus.Values.Any(menu => menu.Visible);
+        }
+
+        internal bool IsFitPresetMenu(Menu menu)
+        {
+            if (menu == null)
+            {
+                return false;
+            }
+
+            return ReferenceEquals(menu, fitPresetsMenu) || fitPresetFolderMenus.Values.Any(folderMenu => ReferenceEquals(folderMenu, menu));
+        }
+
         /// <summary>
         /// Makes or updates the character creator menu. Also has an option to load data from the <see cref="currentCharacter"/> data, to allow for editing an existing ped.
         /// </summary>

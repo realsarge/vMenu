@@ -258,7 +258,8 @@ namespace vMenuClient
                         MainMenu.MpPedCustomizationMenu.inheritanceMenu.Visible ||
                         MainMenu.MpPedCustomizationMenu.propsMenu.Visible ||
                         MainMenu.MpPedCustomizationMenu.clothesMenu.Visible ||
-                        MainMenu.MpPedCustomizationMenu.tattoosMenu.Visible;
+                        MainMenu.MpPedCustomizationMenu.tattoosMenu.Visible ||
+                        MainMenu.MpPedCustomizationMenu.IsAnyFitPresetMenuVisible();
                 }
                 if (!IsMpPedCreatorOpen())
                 {
@@ -1571,8 +1572,8 @@ namespace vMenuClient
                     MainMenu.MpPedCustomizationMenu.inheritanceMenu.Visible ||
                     MainMenu.MpPedCustomizationMenu.propsMenu.Visible ||
                     MainMenu.MpPedCustomizationMenu.clothesMenu.Visible ||
-                    MainMenu.MpPedCustomizationMenu.fitPresetsMenu.Visible ||
-                    MainMenu.MpPedCustomizationMenu.tattoosMenu.Visible;
+                    MainMenu.MpPedCustomizationMenu.tattoosMenu.Visible ||
+                    MainMenu.MpPedCustomizationMenu.IsAnyFitPresetMenuVisible();
             }
             return false;
         }
@@ -1880,7 +1881,7 @@ namespace vMenuClient
                         _ => 0,
                     };
                 }
-                else if (menu == MainMenu.MpPedCustomizationMenu.fitPresetsMenu)
+                else if (MainMenu.MpPedCustomizationMenu.IsFitPresetMenu(menu))
                 {
                     return 2;
                 }
