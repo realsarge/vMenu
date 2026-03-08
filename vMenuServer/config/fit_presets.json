@@ -1,20 +1,23 @@
-{
-  "presets": [
+﻿{
+  "presets": [],
+  "folders": [
     {
-      "name": "Male Casual",
-      "description": "Example preset for mp_m_freemode_01.",
-      "models": [
-        "mp_m_freemode_01"
+      "name": "LSPD",
+      "presets": [
+        {
+          "name": "Patrol L",
+          "description": "Long sleeve patrol uniform.",
+          "models": ["mp_m_freemode_01"],
+          "fitCode": "..."
+        }
       ],
-      "fitCode": "1:0:0,3:0:0,4:0:0,5:0:0,6:0:0,7:0:0,8:0:0,9:0:0,10:0:0,11:0:0"
-    },
-    {
-      "name": "Female Casual",
-      "description": "Example preset for mp_f_freemode_01.",
-      "models": [
-        "mp_f_freemode_01"
-      ],
-      "fitCode": "1:0:0,3:0:0,4:0:0,5:0:0,6:0:0,7:0:0,8:0:0,9:0:0,10:0:0,11:0:0"
+      "folders": [
+        {
+          "name": "SWAT",
+          "presets": [],
+          "folders": []
+        }
+      ]
     }
   ]
 }

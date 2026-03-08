@@ -28,10 +28,24 @@ namespace vMenuClient.menus
             public List<string> models { get; set; } = new List<string>();
         }
 
+        public sealed class ServerFitPresetFolder
+        {
+            public string name { get; set; }
+            public string description { get; set; }
+            public List<ServerFitPreset> presets { get; set; } = new List<ServerFitPreset>();
+            public List<ServerFitPresetFolder> folders { get; set; } = new List<ServerFitPresetFolder>();
+        }
+
+        public sealed class ServerFitPresetConfigFile
+        {
+            public List<ServerFitPreset> presets { get; set; } = new List<ServerFitPreset>();
+            public List<ServerFitPresetFolder> folders { get; set; } = new List<ServerFitPresetFolder>();
+        }
+
         private const string FitClipboardKvp = "vmenu_fit_clipboard";
         private static readonly int[] FitExportComponentIds = { 1, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
         private static readonly int[] FitExportPropIds = { 0, 1, 2, 6, 7 };
-        private static List<ServerFitPreset> serverFitPresets = new List<ServerFitPreset>();
+        private static ServerFitPresetConfigFile serverFitPresets = new ServerFitPresetConfigFile();
         private static bool requestedServerFitPresets;
 
         // Variables
@@ -47,7 +61,12 @@ namespace vMenuClient.menus
         public Menu propsMenu = new("vMenu", "Character Props Options");
         public Menu fitPresetsMenu = new("vMenu", "Outfit Presets");
         private readonly Menu manageSavedCharacterMenu = new("vMenu", "Manage MP Character");
-        private readonly MenuItem applyFitPresetMainButton = new("Apply Outfit Preset", "Apply a server-configured outfit preset to this character.") { Label = "→→→" };
+        private readonly Dictionary<string, Menu> fitPresetFolderMenus = new(StringComparer.OrdinalIgnoreCase);
+        private readonly MenuItem applyFitPresetMainButton = new("Apply Outfit Preset", "Apply a server-configured outfit preset to this character.")
+        {
+            Label = "→→→",
+            LeftIcon = MenuItem.Icon.CLOTHING
+        };
 
         // Need to be able to disable/enable these buttons from another class.
         internal MenuItem createMaleBtn = new("Create Male Character", "Create a new male character.") { Label = "→→→" };
@@ -155,15 +174,41 @@ namespace vMenuClient.menus
         {
             try
             {
-                serverFitPresets = JsonConvert.DeserializeObject<List<ServerFitPreset>>(jsonData) ?? new List<ServerFitPreset>();
+                if (!string.IsNullOrWhiteSpace(jsonData) && jsonData.TrimStart().StartsWith("[", StringComparison.Ordinal))
+                {
+                    serverFitPresets = new ServerFitPresetConfigFile
+                    {
+                        presets = JsonConvert.DeserializeObject<List<ServerFitPreset>>(jsonData) ?? new List<ServerFitPreset>()
+                    };
+                }
+                else
+                {
+                    serverFitPresets = JsonConvert.DeserializeObject<ServerFitPresetConfigFile>(jsonData) ?? new ServerFitPresetConfigFile();
+                }
             }
             catch (JsonException)
             {
-                serverFitPresets = new List<ServerFitPreset>();
+                serverFitPresets = new ServerFitPresetConfigFile();
             }
 
             requestedServerFitPresets = false;
             MainMenu.MpPedCustomizationMenu?.HandleServerFitPresetsUpdated();
+        }
+
+        private static int CountServerFitPresets(ServerFitPresetConfigFile config)
+        {
+            if (config == null)
+            {
+                return 0;
+            }
+
+            return (config.presets?.Count ?? 0) + CountServerFitPresets(config.folders);
+        }
+
+        private static int CountServerFitPresets(IEnumerable<ServerFitPresetFolder> folders)
+        {
+            return (folders ?? Enumerable.Empty<ServerFitPresetFolder>())
+                .Sum(folder => (folder.presets?.Count ?? 0) + CountServerFitPresets(folder.folders));
         }
 
         private static void RequestServerFitPresets()
@@ -203,24 +248,99 @@ namespace vMenuClient.menus
             return modelName != null && preset.models.Any(m => string.Equals(m?.Trim(), modelName, StringComparison.OrdinalIgnoreCase));
         }
 
+        private Menu GetOrCreateFitPresetFolderMenu(string path, string folderName)
+        {
+            if (fitPresetFolderMenus.TryGetValue(path, out var existingMenu))
+            {
+                existingMenu.MenuTitle = "Outfit Presets";
+                existingMenu.MenuSubtitle = folderName;
+                return existingMenu;
+            }
+
+            var menu = new Menu("Outfit Presets", folderName);
+            MenuController.AddMenu(menu);
+            menu.InstructionalButtons.Add(Control.MoveLeftRight, "Turn Head");
+            menu.InstructionalButtons.Add(Control.PhoneExtraOption, "Turn Character");
+            menu.InstructionalButtons.Add(Control.ParachuteBrakeRight, "Turn Camera Right");
+            menu.InstructionalButtons.Add(Control.ParachuteBrakeLeft, "Turn Camera Left");
+            menu.OnItemSelect += (_, item, __) =>
+            {
+                if (item.ItemData is ServerFitPreset preset)
+                {
+                    ApplyFitCode(preset.fitCode);
+                }
+            };
+
+            fitPresetFolderMenus[path] = menu;
+            return menu;
+        }
+
+        private int PopulateFitPresetMenu(Menu targetMenu, IEnumerable<ServerFitPreset> presets, IEnumerable<ServerFitPresetFolder> folders, uint currentModelHash, string path)
+        {
+            var addedItems = 0;
+
+            foreach (var folder in (folders ?? Enumerable.Empty<ServerFitPresetFolder>())
+                .Where(folder => !string.IsNullOrWhiteSpace(folder?.name))
+                .OrderBy(folder => folder.name, StringComparer.OrdinalIgnoreCase))
+            {
+                var folderPath = string.IsNullOrWhiteSpace(path) ? folder.name.Trim() : $"{path}/{folder.name.Trim()}";
+                var folderMenu = GetOrCreateFitPresetFolderMenu(folderPath, folder.name.Trim());
+                folderMenu.ClearMenuItems();
+
+                var folderItemCount = PopulateFitPresetMenu(folderMenu, folder.presets, folder.folders, currentModelHash, folderPath);
+                if (folderItemCount <= 0)
+                {
+                    continue;
+                }
+
+                var folderItem = new MenuItem(folder.name.Trim(), string.IsNullOrWhiteSpace(folder.description) ? "Browse this outfit preset folder." : folder.description)
+                {
+                    Label = "→→→",
+                    LeftIcon = MenuItem.Icon.CLOTHING
+                };
+
+                targetMenu.AddMenuItem(folderItem);
+                MenuController.BindMenuItem(targetMenu, folderMenu, folderItem);
+                folderMenu.RefreshIndex();
+                MenuLocalizer.LocalizeMenuInstance(folderMenu);
+                addedItems++;
+            }
+
+            foreach (var preset in (presets ?? Enumerable.Empty<ServerFitPreset>())
+                .Where(preset => !string.IsNullOrWhiteSpace(preset?.name) && !string.IsNullOrWhiteSpace(preset.fitCode) && FitPresetSupportsModel(preset, currentModelHash))
+                .OrderBy(preset => preset.name, StringComparer.OrdinalIgnoreCase))
+            {
+                targetMenu.AddMenuItem(new MenuItem(preset.name, string.IsNullOrWhiteSpace(preset.description) ? "Apply this outfit preset." : preset.description)
+                {
+                    ItemData = preset,
+                    LeftIcon = MenuItem.Icon.CLOTHING
+                });
+                addedItems++;
+            }
+
+            return addedItems;
+        }
+
         private void RefreshFitPresetsMenu()
         {
             fitPresetsMenu.ClearMenuItems();
+            foreach (var folderMenu in fitPresetFolderMenus.Values)
+            {
+                folderMenu.ClearMenuItems();
+            }
 
-            if (serverFitPresets.Count == 0)
+            var totalConfiguredPresets = CountServerFitPresets(serverFitPresets);
+            if (totalConfiguredPresets == 0)
             {
                 RequestServerFitPresets();
             }
 
             var currentModelHash = currentCharacter.ModelHash != 0 ? currentCharacter.ModelHash : (uint)GetEntityModel(Game.PlayerPed.Handle);
-            var visiblePresets = serverFitPresets
-                .Where(preset => !string.IsNullOrWhiteSpace(preset?.name) && !string.IsNullOrWhiteSpace(preset.fitCode) && FitPresetSupportsModel(preset, currentModelHash))
-                .OrderBy(preset => preset.name, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var visiblePresetCount = PopulateFitPresetMenu(fitPresetsMenu, serverFitPresets.presets, serverFitPresets.folders, currentModelHash, "");
 
-            if (visiblePresets.Count == 0)
+            if (visiblePresetCount == 0)
             {
-                var emptyDescription = serverFitPresets.Count == 0
+                var emptyDescription = totalConfiguredPresets == 0
                     ? "No server fit presets have been received yet. If presets are configured, reopen this menu in a moment."
                     : "No matching server fit presets were found for this freemode model.";
 
@@ -234,22 +354,18 @@ namespace vMenuClient.menus
                 applyFitPresetMainButton.LeftIcon = MenuItem.Icon.INFO;
                 applyFitPresetMainButton.Description = emptyDescription;
                 fitPresetsMenu.RefreshIndex();
+                MenuLocalizer.LocalizeMenuInstance(createCharacterMenu);
+                MenuLocalizer.LocalizeMenuInstance(fitPresetsMenu);
                 return;
             }
 
             applyFitPresetMainButton.Enabled = true;
-            applyFitPresetMainButton.LeftIcon = MenuItem.Icon.NONE;
+            applyFitPresetMainButton.LeftIcon = MenuItem.Icon.CLOTHING;
             applyFitPresetMainButton.Description = "Apply a server-configured outfit preset to this character.";
 
-            foreach (var preset in visiblePresets)
-            {
-                fitPresetsMenu.AddMenuItem(new MenuItem(preset.name, string.IsNullOrWhiteSpace(preset.description) ? "Apply this outfit preset." : preset.description)
-                {
-                    ItemData = preset
-                });
-            }
-
             fitPresetsMenu.RefreshIndex();
+            MenuLocalizer.LocalizeMenuInstance(createCharacterMenu);
+            MenuLocalizer.LocalizeMenuInstance(fitPresetsMenu);
         }
 
         public void HandleServerFitPresetsUpdated()

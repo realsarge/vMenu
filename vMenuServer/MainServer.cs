@@ -65,6 +65,15 @@ namespace vMenuServer
         private sealed class FitPresetConfigFile
         {
             public List<FitPresetDefinition> presets { get; set; } = new List<FitPresetDefinition>();
+            public List<FitPresetFolderDefinition> folders { get; set; } = new List<FitPresetFolderDefinition>();
+        }
+
+        private sealed class FitPresetFolderDefinition
+        {
+            public string name { get; set; }
+            public string description { get; set; }
+            public List<FitPresetDefinition> presets { get; set; } = new List<FitPresetDefinition>();
+            public List<FitPresetFolderDefinition> folders { get; set; } = new List<FitPresetFolderDefinition>();
         }
 
         private sealed class MenuLocalizationConfigFile
@@ -86,7 +95,7 @@ namespace vMenuServer
         public static bool DebugMode = GetResourceMetadata(GetCurrentResourceName(), "server_debug_mode", 0) == "true";
 
         public static string Version { get { return GetResourceMetadata(GetCurrentResourceName(), "version", 0); } }
-        public static string FitPresetsJson { get; private set; } = "[]";
+        public static string FitPresetsJson { get; private set; } = "{\"presets\":[],\"folders\":[]}";
         public static string MenuLocalizationJson { get; private set; } = "{\"menu\":{},\"notifications\":{}}";
 
         // Time
@@ -1243,65 +1252,143 @@ namespace vMenuServer
             var fitPresetFile = LoadResourceFile(GetCurrentResourceName(), FitPresetsConfigPath);
             if (fitPresetFile == null)
             {
-                FitPresetsJson = "[]";
+                FitPresetsJson = "{\"presets\":[],\"folders\":[]}";
                 Debug.WriteLine($"^3[vMenu] [WARNING]^7 {FitPresetsConfigPath} was not found in the running resource.");
                 return;
             }
 
             try
             {
-                var parsedFile = JsonConvert.DeserializeObject<FitPresetConfigFile>(fitPresetFile) ?? new FitPresetConfigFile();
-                var validatedPresets = new List<FitPresetDefinition>();
-                var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var preset in parsedFile.presets ?? Enumerable.Empty<FitPresetDefinition>())
+                var parsedFile = ParseFitPresetConfigFile(fitPresetFile);
+                var sanitizedFile = new FitPresetConfigFile
                 {
-                    if (preset == null)
-                    {
-                        continue;
-                    }
+                    presets = SanitizeFitPresetDefinitions(parsedFile.presets, "root"),
+                    folders = SanitizeFitPresetFolders(parsedFile.folders, "root")
+                };
 
-                    var name = preset.name?.Trim();
-                    var fitCode = preset.fitCode?.Trim();
-                    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(fitCode))
-                    {
-                        Debug.WriteLine("^3[vMenu] [WARNING]^7 Skipping a fit preset with a missing name or fitCode.");
-                        continue;
-                    }
-
-                    if (!usedNames.Add(name))
-                    {
-                        Debug.WriteLine($"^3[vMenu] [WARNING]^7 Duplicate fit preset name '{name}' found in {FitPresetsConfigPath}. Keeping the first entry only.");
-                        continue;
-                    }
-
-                    if (!IsValidFitCode(fitCode, out var validationError))
-                    {
-                        Debug.WriteLine($"^3[vMenu] [WARNING]^7 Skipping fit preset '{name}' because its fitCode is invalid: {validationError}");
-                        continue;
-                    }
-
-                    validatedPresets.Add(new FitPresetDefinition
-                    {
-                        name = name,
-                        description = preset.description?.Trim() ?? "",
-                        fitCode = fitCode,
-                        models = (preset.models ?? new List<string>())
-                            .Where(model => !string.IsNullOrWhiteSpace(model))
-                            .Select(model => model.Trim())
-                            .Distinct(StringComparer.OrdinalIgnoreCase)
-                            .ToList()
-                    });
-                }
-
-                FitPresetsJson = JsonConvert.SerializeObject(validatedPresets);
-                Log($"Loaded {validatedPresets.Count} fit preset(s) from {FitPresetsConfigPath}.", LogLevel.info);
+                FitPresetsJson = JsonConvert.SerializeObject(sanitizedFile);
+                Log($"Loaded {CountFitPresets(sanitizedFile)} fit preset(s) from {FitPresetsConfigPath}.", LogLevel.info);
             }
             catch (JsonException ex)
             {
-                FitPresetsJson = "[]";
+                FitPresetsJson = "{\"presets\":[],\"folders\":[]}";
                 Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your {FitPresetsConfigPath} file contains a problem! Error details: {ex.Message}\n\n");
             }
+        }
+
+        private static FitPresetConfigFile ParseFitPresetConfigFile(string fitPresetFile)
+        {
+            if (string.IsNullOrWhiteSpace(fitPresetFile))
+            {
+                return new FitPresetConfigFile();
+            }
+
+            var trimmedFile = fitPresetFile.TrimStart();
+            if (trimmedFile.StartsWith("[", StringComparison.Ordinal))
+            {
+                return new FitPresetConfigFile
+                {
+                    presets = JsonConvert.DeserializeObject<List<FitPresetDefinition>>(fitPresetFile) ?? new List<FitPresetDefinition>()
+                };
+            }
+
+            return JsonConvert.DeserializeObject<FitPresetConfigFile>(fitPresetFile) ?? new FitPresetConfigFile();
+        }
+
+        private static List<FitPresetDefinition> SanitizeFitPresetDefinitions(IEnumerable<FitPresetDefinition> presets, string location)
+        {
+            var sanitizedPresets = new List<FitPresetDefinition>();
+
+            foreach (var preset in presets ?? Enumerable.Empty<FitPresetDefinition>())
+            {
+                if (preset == null)
+                {
+                    continue;
+                }
+
+                var name = preset.name?.Trim();
+                var fitCode = preset.fitCode?.Trim();
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(fitCode))
+                {
+                    Debug.WriteLine($"^3[vMenu] [WARNING]^7 Skipping a fit preset in {location} with a missing name or fitCode.");
+                    continue;
+                }
+
+                if (!IsValidFitCode(fitCode, out var validationError))
+                {
+                    Debug.WriteLine($"^3[vMenu] [WARNING]^7 Skipping fit preset '{name}' in {location} because its fitCode is invalid: {validationError}");
+                    continue;
+                }
+
+                sanitizedPresets.Add(new FitPresetDefinition
+                {
+                    name = name,
+                    description = preset.description?.Trim() ?? "",
+                    fitCode = fitCode,
+                    models = (preset.models ?? new List<string>())
+                        .Where(model => !string.IsNullOrWhiteSpace(model))
+                        .Select(model => model.Trim())
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                });
+            }
+
+            return sanitizedPresets;
+        }
+
+        private static List<FitPresetFolderDefinition> SanitizeFitPresetFolders(IEnumerable<FitPresetFolderDefinition> folders, string location)
+        {
+            var sanitizedFolders = new List<FitPresetFolderDefinition>();
+
+            foreach (var folder in folders ?? Enumerable.Empty<FitPresetFolderDefinition>())
+            {
+                if (folder == null)
+                {
+                    continue;
+                }
+
+                var folderName = folder.name?.Trim();
+                if (string.IsNullOrWhiteSpace(folderName))
+                {
+                    Debug.WriteLine($"^3[vMenu] [WARNING]^7 Skipping a fit preset folder in {location} with a missing name.");
+                    continue;
+                }
+
+                var folderLocation = $"{location}/{folderName}";
+                var sanitizedFolder = new FitPresetFolderDefinition
+                {
+                    name = folderName,
+                    description = folder.description?.Trim() ?? "",
+                    presets = SanitizeFitPresetDefinitions(folder.presets, folderLocation),
+                    folders = SanitizeFitPresetFolders(folder.folders, folderLocation)
+                };
+
+                if (sanitizedFolder.presets.Count == 0 && sanitizedFolder.folders.Count == 0)
+                {
+                    Debug.WriteLine($"^3[vMenu] [WARNING]^7 Skipping empty fit preset folder '{folderLocation}'.");
+                    continue;
+                }
+
+                sanitizedFolders.Add(sanitizedFolder);
+            }
+
+            return sanitizedFolders;
+        }
+
+        private static int CountFitPresets(FitPresetConfigFile configFile)
+        {
+            if (configFile == null)
+            {
+                return 0;
+            }
+
+            return (configFile.presets?.Count ?? 0) + CountFitPresets(configFile.folders);
+        }
+
+        private static int CountFitPresets(IEnumerable<FitPresetFolderDefinition> folders)
+        {
+            return (folders ?? Enumerable.Empty<FitPresetFolderDefinition>())
+                .Sum(folder => (folder.presets?.Count ?? 0) + CountFitPresets(folder.folders));
         }
 
         private static void LoadMenuLocalization()
