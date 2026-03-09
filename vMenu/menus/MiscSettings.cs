@@ -22,6 +22,7 @@ namespace vMenuClient.menus
         // Variables
         private Menu menu;
         private Menu teleportOptionsMenu;
+        private Menu teleportLocationsMenu;
         private Menu developerToolsMenu;
         private Menu entitySpawnerMenu;
 
@@ -104,14 +105,9 @@ namespace vMenuClient.menus
             // Create the menu.
             menu = new Menu(Game.Player.Name, "Misc Settings");
             teleportOptionsMenu = new Menu(Game.Player.Name, "Teleport Options");
+            teleportLocationsMenu = new Menu(Game.Player.Name, "Teleport Locations");
             developerToolsMenu = new Menu(Game.Player.Name, "Development Tools");
             entitySpawnerMenu = new Menu(Game.Player.Name, "Entity Spawner");
-
-            // teleport menu
-            var teleportMenu = new Menu(Game.Player.Name, "Teleport Locations");
-            var teleportMenuBtn = new MenuItem("Teleport Locations", "Teleport to pre-configured locations, added by the server owner.");
-            MenuController.AddSubmenu(menu, teleportMenu);
-            MenuController.BindMenuItem(menu, teleportMenu, teleportMenuBtn);
 
             // keybind settings menu
             var keybindMenu = new Menu(Game.Player.Name, "Keybind Settings");
@@ -366,17 +362,12 @@ namespace vMenuClient.menus
                 }
                 if (IsAllowed(Permission.MSTeleportLocations))
                 {
-                    teleportOptionsMenu.AddMenuItem(teleportMenuBtn);
 
-                    MenuController.AddSubmenu(teleportOptionsMenu, teleportMenu);
-                    MenuController.BindMenuItem(teleportOptionsMenu, teleportMenu, teleportMenuBtn);
-                    teleportMenuBtn.Label = "→→→";
-
-                    teleportMenu.OnMenuOpen += (sender) =>
+                    teleportLocationsMenu.OnMenuOpen += (sender) =>
                     {
-                        if (teleportMenu.Size != TpLocations.Count())
+                        if (teleportLocationsMenu.Size != TpLocations.Count())
                         {
-                            teleportMenu.ClearMenuItems();
+                            teleportLocationsMenu.ClearMenuItems();
                             foreach (var location in TpLocations)
                             {
                                 var x = Math.Round(location.coordinates.X, 2);
@@ -384,12 +375,12 @@ namespace vMenuClient.menus
                                 var z = Math.Round(location.coordinates.Z, 2);
                                 var heading = Math.Round(location.heading, 2);
                                 var tpBtn = new MenuItem(location.name, $"Teleport to ~y~{location.name}~n~~s~x: ~y~{x}~n~~s~y: ~y~{y}~n~~s~z: ~y~{z}~n~~s~heading: ~y~{heading}") { ItemData = location };
-                                teleportMenu.AddMenuItem(tpBtn);
+                                teleportLocationsMenu.AddMenuItem(tpBtn);
                             }
                         }
                     };
 
-                    teleportMenu.OnItemSelect += async (sender, item, index) =>
+                    teleportLocationsMenu.OnItemSelect += async (sender, item, index) =>
                     {
                         if (item.ItemData is vMenuShared.ConfigManager.TeleportLocation tl)
                         {
@@ -806,6 +797,16 @@ namespace vMenuClient.menus
                 CreateMenu();
             }
             return menu;
+        }
+
+        public Menu GetTeleportLocationsMenu()
+        {
+            if (menu == null)
+            {
+                CreateMenu();
+            }
+
+            return teleportLocationsMenu;
         }
 
         private readonly struct Blip

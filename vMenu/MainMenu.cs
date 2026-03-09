@@ -910,6 +910,17 @@ namespace vMenuClient
                 }
             }
 
+            if (IsAllowed(Permission.MSTeleportLocations))
+            {
+                var menu = MiscSettingsMenu.GetTeleportLocationsMenu();
+                var button = new MenuItem("Teleport Locations", "Teleport to pre-configured locations, added by the server owner.")
+                {
+                    Label = ">>>",
+                    LeftIcon = MenuItem.Icon.TREVOR
+                };
+                AddMenu(Menu, menu, button);
+            }
+
             var worldSubmenuBtn = new MenuItem("World Related Options", "Open this submenu for world related subcategories.")
             {
                 Label = ">>>",
