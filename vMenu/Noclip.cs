@@ -12,6 +12,7 @@ namespace vMenuClient
 {
     public class NoClip : BaseScript
     {
+        private const int NoClipCharacterAlpha = 180;
         private static bool NoclipActive { get; set; } = false;
         private static int MovingSpeed { get; set; } = 0;
         private static int Scale = -1;
@@ -42,6 +43,10 @@ namespace vMenuClient
             if (!active)
             {
                 SetScaleformMovieAsNoLongerNeeded(ref Scale);
+                if (Game.PlayerPed != null && Game.PlayerPed.Exists())
+                {
+                    ResetEntityAlpha(Game.PlayerPed.Handle);
+                }
 
                 Scale = -1;
             }
@@ -228,6 +233,7 @@ namespace vMenuClient
                 SetEntityCoordsNoOffset(noclipEntity, newPos.X, newPos.Y, newPos.Z, true, true, true);
 
                 SetEntityVisible(noclipEntity, true, false);
+                SetEntityAlpha(Game.PlayerPed.Handle, NoClipCharacterAlpha, 1);
                 SetLocalPlayerVisibleLocally(true);
 
                 SetEveryoneIgnorePlayer(Game.PlayerPed.Handle, true);
@@ -248,6 +254,11 @@ namespace vMenuClient
 
                 SetEveryoneIgnorePlayer(Game.PlayerPed.Handle, false);
                 SetPoliceIgnorePlayer(Game.PlayerPed.Handle, false);
+            }
+
+            if (Game.PlayerPed != null && Game.PlayerPed.Exists())
+            {
+                ResetEntityAlpha(Game.PlayerPed.Handle);
             }
 
             await Task.FromResult(0);
