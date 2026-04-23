@@ -173,14 +173,7 @@ namespace vMenuServer
         {
             using (var wc = new WebClient())
             {
-                var downloadTask = wc.DownloadStringTaskAsync(new Uri(url));
-                var timeoutTask = Task.Delay(10_000);
-                if (await Task.WhenAny(downloadTask, timeoutTask) == timeoutTask)
-                {
-                    wc.CancelAsync();
-                    throw new Exception("HTTP request timed out after 10s");
-                }
-                return await downloadTask;
+                return await wc.DownloadStringTaskAsync(new Uri(url));
             }
         }
 
