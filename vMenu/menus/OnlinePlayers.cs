@@ -367,7 +367,11 @@ namespace vMenuClient.menus
         {
             void UpdateStuff()
             {
-                var savedIndex = menu.CurrentIndex;
+                if (playerMenu.Visible)
+                {
+                    return;
+                }
+
                 menu.ClearMenuItems();
 
                 foreach (var p in MainMenu.PlayersList.OrderBy(a => ResolveDisplayName(a)))
@@ -381,15 +385,8 @@ namespace vMenuClient.menus
                 }
 
                 menu.RefreshIndex();
-                if (menu.Size > 0)
-                {
-                    menu.CurrentIndex = Math.Min(savedIndex, menu.Size - 1);
-                }
                 //menu.UpdateScaleform();
-                if (!playerMenu.Visible)
-                {
-                    playerMenu.RefreshIndex();
-                }
+                playerMenu.RefreshIndex();
                 //playerMenu.UpdateScaleform();
             }
 
