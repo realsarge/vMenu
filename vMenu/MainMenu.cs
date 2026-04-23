@@ -692,7 +692,22 @@ namespace vMenuClient
             }
 
             var sanitized = new string(chars.ToArray()).Trim();
-            return string.IsNullOrWhiteSpace(sanitized) ? GetSafePlayerName(Game.Player.Name) : sanitized;
+            if (string.IsNullOrWhiteSpace(sanitized))
+            {
+                return GetSafePlayerName(Game.Player.Name);
+            }
+
+            // GTA's scaleform does not support non-ASCII characters in menu headers and will
+            // silently fail to draw the menu. Fall back to the raw player name in that case.
+            foreach (var c in sanitized)
+            {
+                if (c > 127)
+                {
+                    return GetSafePlayerName(Game.Player.Name);
+                }
+            }
+
+            return sanitized;
         }
 
         private static void RefreshMenuHeaders(bool force = false)
