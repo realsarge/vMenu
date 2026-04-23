@@ -728,7 +728,6 @@ namespace vMenuClient
                 }
 
                 menu.MenuTitle = headerName;
-                menu.RefreshIndex();
             });
         }
         #endregion
