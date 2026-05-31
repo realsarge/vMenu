@@ -1102,10 +1102,15 @@ namespace vMenuServer
         [EventHandler("vMenu:RequestPlayerList")]
         internal void RequestPlayerListFromPlayer([FromSource] Player player)
         {
-            player.TriggerEvent("vMenu:ReceivePlayerList", Players.Select(p => new
+            player.TriggerEvent("vMenu:ReceivePlayerList", Players.Select(p =>
             {
-                n = p.Name,
-                s = int.Parse(p.Handle),
+                var serverId = int.Parse(p.Handle);
+                return new
+                {
+                    n = p.Name,
+                    s = serverId,
+                    t = NameSyncService.GetCurrentTerminalForServerId(serverId) ?? "",
+                };
             }));
         }
 

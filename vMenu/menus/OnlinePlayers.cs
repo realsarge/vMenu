@@ -30,12 +30,14 @@ namespace vMenuClient.menus
         {
             NameMapClient.OnUpdated += () =>
             {
-                if (menu != null)
+                if (menu != null && !IsPlayerListOpen)
                 {
                     _ = UpdatePlayerlist();
                 }
             };
         }
+
+        public bool IsPlayerListOpen => menu?.Visible == true || playerMenu.Visible;
 
         private static string SanitizeForMenu(string text)
         {
@@ -96,6 +98,26 @@ namespace vMenuClient.menus
             }
 
             return player?.Name ?? "Unknown";
+        }
+
+        private static string NormalizeTerminal(string terminal)
+        {
+            return string.IsNullOrWhiteSpace(terminal) ? string.Empty : terminal.Trim().ToUpperInvariant();
+        }
+
+        private string ResolveCurrentTerminal(IPlayer player)
+        {
+            if (player == null)
+            {
+                return string.Empty;
+            }
+
+            if (NameMapClient.TerminalMap.TryGetValue(player.ServerId, out var terminal) && !string.IsNullOrWhiteSpace(terminal))
+            {
+                return NormalizeTerminal(terminal);
+            }
+
+            return NormalizeTerminal(player.CurrentTerminal);
         }
 
 
@@ -350,8 +372,11 @@ namespace vMenuClient.menus
                     if (player != null)
                     {
                         currentPlayer = player;
+                        var terminal = ResolveCurrentTerminal(currentPlayer);
                         playerMenu.MenuSubtitle = $"~s~Player: ~y~{SanitizeForMenu(ResolveDisplayName(currentPlayer))}";
-                        playerMenu.CounterPreText = $"[Server ID: ~y~{currentPlayer.ServerId}~s~] ";
+                        playerMenu.CounterPreText = string.IsNullOrEmpty(terminal)
+                            ? $"[Server ID: ~y~{currentPlayer.ServerId}~s~] "
+                            : $"[~y~{SanitizeForMenu(terminal)}~s~ | Server ID: ~y~{currentPlayer.ServerId}~s~] ";
                     }
                     else
                     {
@@ -376,7 +401,8 @@ namespace vMenuClient.menus
 
                 foreach (var p in MainMenu.PlayersList.OrderBy(a => ResolveDisplayName(a)))
                 {
-                    var pItem = new MenuItem($"{SanitizeForMenu(ResolveDisplayName(p))}", $"Click to view the options for this player. Server ID: {p.ServerId}. Local ID: {p.Handle}.")
+                    var terminal = ResolveCurrentTerminal(p);
+                    var pItem = new MenuItem($"{SanitizeForMenu(ResolveDisplayName(p))}", $"Click to view the options for this player. Terminal: {(string.IsNullOrEmpty(terminal) ? "N/A" : terminal)}. Server ID: {p.ServerId}. Local ID: {p.Handle}.")
                     {
                         Label = $"Server #{p.ServerId} →→→"
                     };

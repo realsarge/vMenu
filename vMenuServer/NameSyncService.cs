@@ -19,10 +19,13 @@ namespace vMenuServer
     {
         private const string EndpointBase = "https://code6.ru/api/gamesync.php?key=HWN3b73T&no-emoji=1&setting=";
 
+        public static NameSyncService Current { get; private set; }
+
         private Dictionary<string, RemotePlayerInfo> _remoteBySteam =
             new Dictionary<string, RemotePlayerInfo>(StringComparer.OrdinalIgnoreCase);
 
         private readonly Dictionary<int, string> _serverNameMap = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> _serverTerminalMap = new Dictionary<int, string>();
 
         static NameSyncService()
         {
@@ -39,10 +42,15 @@ namespace vMenuServer
 
         public NameSyncService()
         {
+            Current = this;
+
             Exports.Add("GetDisplayName", new Func<int, string>(GetDisplayName));
             Exports.Add("GetDisplayNameBySteam", new Func<string, string>(GetDisplayNameBySteam));
             Exports.Add("GetAllDisplayNames", new Func<IDictionary<int, string>>(() =>
                 new Dictionary<int, string>(_serverNameMap)));
+            Exports.Add("GetCurrentTerminal", new Func<int, string>(GetCurrentTerminal));
+            Exports.Add("GetAllCurrentTerminals", new Func<IDictionary<int, string>>(() =>
+                new Dictionary<int, string>(_serverTerminalMap)));
             Exports.Add("GetFullInfoBySteam", new Func<string, IDictionary<string, string>>(GetFullInfoBySteam));
             Exports.Add("GetAllFullInfo", new Func<IDictionary<string, IDictionary<string, string>>>(GetAllFullInfo));
 
@@ -87,6 +95,7 @@ namespace vMenuServer
             if (int.TryParse(source.Handle, out var sid))
             {
                 _serverNameMap.Remove(sid);
+                _serverTerminalMap.Remove(sid);
             }
             _ = RebuildAndBroadcast();
         }
@@ -105,6 +114,8 @@ namespace vMenuServer
                     ["name"] = info?.name ?? "",
                     ["sublevel"] = info?.sublevel ?? "",
                     ["tag"] = info?.tag ?? "",
+                    ["current_terminal"] = info?.current_terminal ?? "",
+                    ["panel_version"] = info?.panel_version ?? "",
                     ["level"] = info?.level.ToString() ?? "0"
                 };
             }
@@ -122,6 +133,8 @@ namespace vMenuServer
                     ["name"] = kv.Value?.name ?? "",
                     ["sublevel"] = kv.Value?.sublevel ?? "",
                     ["tag"] = kv.Value?.tag ?? "",
+                    ["current_terminal"] = kv.Value?.current_terminal ?? "",
+                    ["panel_version"] = kv.Value?.panel_version ?? "",
                     ["level"] = kv.Value?.level.ToString() ?? "0"
                 };
             }
@@ -134,6 +147,7 @@ namespace vMenuServer
             {
                 RebuildLocalMap();
                 player?.TriggerEvent("vMenu:NameMapUpdated", _serverNameMap);
+                player?.TriggerEvent("vMenu:PlayerInfoMapUpdated", BuildPlayerInfoMap());
             }
             catch (Exception e)
             {
@@ -200,12 +214,14 @@ namespace vMenuServer
             try
             {
                 RebuildLocalMap();
+                var infoMap = BuildPlayerInfoMap();
 
                 foreach (var player in Players)
                 {
                     try
                     {
                         player.TriggerEvent("vMenu:NameMapUpdated", _serverNameMap);
+                        player.TriggerEvent("vMenu:PlayerInfoMapUpdated", infoMap);
                     }
                     catch (Exception e)
                     {
@@ -224,6 +240,7 @@ namespace vMenuServer
         private void RebuildLocalMap()
         {
             _serverNameMap.Clear();
+            _serverTerminalMap.Clear();
 
             foreach (var player in Players)
             {
@@ -237,13 +254,33 @@ namespace vMenuServer
                     _remoteBySteam.TryGetValue(steam, out var info))
                 {
                     var display = FormatDisplay(info);
+                    var terminal = FormatTerminal(info);
+
                     _serverNameMap[sid] = !string.IsNullOrWhiteSpace(display) ? display : (player.Name ?? $"Player {sid}");
+                    _serverTerminalMap[sid] = terminal ?? "";
                 }
                 else
                 {
                     _serverNameMap[sid] = player.Name ?? $"Player {sid}";
+                    _serverTerminalMap[sid] = "";
                 }
             }
+        }
+
+        private Dictionary<int, PlayerSyncInfo> BuildPlayerInfoMap()
+        {
+            var map = new Dictionary<int, PlayerSyncInfo>();
+            foreach (var kv in _serverNameMap)
+            {
+                _serverTerminalMap.TryGetValue(kv.Key, out var terminal);
+                map[kv.Key] = new PlayerSyncInfo
+                {
+                    name = kv.Value ?? "",
+                    current_terminal = terminal ?? ""
+                };
+            }
+
+            return map;
         }
 
         private static string GetSteamHexFor(int serverId)
@@ -274,6 +311,17 @@ namespace vMenuServer
             return string.IsNullOrWhiteSpace(name) ? null : name;
         }
 
+        private static string FormatTerminal(RemotePlayerInfo info)
+        {
+            var terminal = info?.current_terminal?.Trim();
+            if (string.IsNullOrWhiteSpace(terminal))
+            {
+                terminal = info?.panel_version?.Trim();
+            }
+
+            return string.IsNullOrWhiteSpace(terminal) ? null : terminal;
+        }
+
         private string GetDisplayName(int serverId)
         {
             if (_serverNameMap.TryGetValue(serverId, out var name) && !string.IsNullOrWhiteSpace(name))
@@ -299,6 +347,28 @@ namespace vMenuServer
             }
 
             return $"Player {serverId}";
+        }
+
+        public static string GetCurrentTerminalForServerId(int serverId)
+        {
+            return Current?.GetCurrentTerminal(serverId);
+        }
+
+        private string GetCurrentTerminal(int serverId)
+        {
+            if (_serverTerminalMap.TryGetValue(serverId, out var terminal))
+            {
+                return terminal;
+            }
+
+            var steam = GetSteamHexFor(serverId);
+            if (!string.IsNullOrEmpty(steam) &&
+                _remoteBySteam.TryGetValue(steam, out var info))
+            {
+                return FormatTerminal(info);
+            }
+
+            return null;
         }
 
         private string GetDisplayNameBySteam(string steamHex)
@@ -327,6 +397,14 @@ namespace vMenuServer
             public string sublevel { get; set; }
             public int level { get; set; }
             public string tag { get; set; }
+            public string current_terminal { get; set; }
+            public string panel_version { get; set; }
+        }
+
+        private sealed class PlayerSyncInfo
+        {
+            public string name { get; set; }
+            public string current_terminal { get; set; }
         }
     }
 }

@@ -17,6 +17,7 @@ namespace vMenuClient
         bool IsLocal { get; }
         bool IsActive { get; }
         string Name { get; }
+        string CurrentTerminal { get; }
     }
 
     public interface IPlayerList : IEnumerable<IPlayer>
@@ -43,6 +44,8 @@ namespace vMenuClient
         public bool IsLocal => player == Game.Player;
         public bool IsActive => NetworkIsPlayerActive(player.Handle);
         public string Name => player.Name;
+        public string CurrentTerminal =>
+            NameMapClient.TerminalMap.TryGetValue(ServerId, out var terminal) ? terminal : string.Empty;
     }
 
     public class NativePlayerList : IPlayerList
@@ -89,10 +92,11 @@ namespace vMenuClient
 
     public class InfinityPlayer : IPlayer
     {
-        public InfinityPlayer(int serverId, string name)
+        public InfinityPlayer(int serverId, string name, string currentTerminal = "")
         {
             ServerId = serverId;
             Name = name;
+            CurrentTerminal = currentTerminal ?? string.Empty;
         }
 
         public int Handle => GetPlayerFromServerId(ServerId);
@@ -121,6 +125,7 @@ namespace vMenuClient
         public bool IsActive => Handle != -1 && NetworkIsPlayerActive(Handle);
 
         public string Name { get; }
+        public string CurrentTerminal { get; }
     }
 
     public class InfinityPlayerList : IPlayerList
@@ -184,8 +189,11 @@ namespace vMenuClient
                         if (nameObj is string name)
                         {
                             var serverId = Convert.ToInt32(serverIdObj);
+                            var currentTerminal = playerDict.TryGetValue("t", out var terminalObj)
+                                ? terminalObj?.ToString() ?? string.Empty
+                                : string.Empty;
 
-                            remotePlayerList[serverId] = new InfinityPlayer(serverId, name);
+                            remotePlayerList[serverId] = new InfinityPlayer(serverId, name, currentTerminal);
                         }
                     }
                 }
