@@ -120,6 +120,14 @@ namespace vMenuClient.menus
             return NormalizeTerminal(player.CurrentTerminal);
         }
 
+        private string FormatPlayerListName(IPlayer player)
+        {
+            var name = SanitizeForMenu(ResolveDisplayName(player));
+            var terminal = SanitizeForMenu(ResolveCurrentTerminal(player));
+
+            return string.IsNullOrEmpty(terminal) ? name : $"{name} ({terminal})";
+        }
+
 
         /// <summary>
         /// Creates the menu.
@@ -372,11 +380,8 @@ namespace vMenuClient.menus
                     if (player != null)
                     {
                         currentPlayer = player;
-                        var terminal = ResolveCurrentTerminal(currentPlayer);
                         playerMenu.MenuSubtitle = $"~s~Player: ~y~{SanitizeForMenu(ResolveDisplayName(currentPlayer))}";
-                        playerMenu.CounterPreText = string.IsNullOrEmpty(terminal)
-                            ? $"[Server ID: ~y~{currentPlayer.ServerId}~s~] "
-                            : $"[~y~{SanitizeForMenu(terminal)}~s~ | Server ID: ~y~{currentPlayer.ServerId}~s~] ";
+                        playerMenu.CounterPreText = $"[Server ID: ~y~{currentPlayer.ServerId}~s~] ";
                     }
                     else
                     {
@@ -402,7 +407,7 @@ namespace vMenuClient.menus
                 foreach (var p in MainMenu.PlayersList.OrderBy(a => ResolveDisplayName(a)))
                 {
                     var terminal = ResolveCurrentTerminal(p);
-                    var pItem = new MenuItem($"{SanitizeForMenu(ResolveDisplayName(p))}", $"Click to view the options for this player. Terminal: {(string.IsNullOrEmpty(terminal) ? "N/A" : terminal)}. Server ID: {p.ServerId}. Local ID: {p.Handle}.")
+                    var pItem = new MenuItem(FormatPlayerListName(p), $"Click to view the options for this player. Terminal: {(string.IsNullOrEmpty(terminal) ? "N/A" : terminal)}. Server ID: {p.ServerId}. Local ID: {p.Handle}.")
                     {
                         Label = $"Server #{p.ServerId} →→→"
                     };
