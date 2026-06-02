@@ -202,6 +202,30 @@ namespace vMenuClient
             SendChatMessage("Success", message, VMenuBlue, "fa-solid fa-circle-check");
         }
 
+        public static void OxLib(string title, string message, string type = "inform", int duration = 4500)
+        {
+            var cleanedTitle = MenuLocalizer.TranslateNotificationText(StripFormatting(title));
+            var cleanedMessage = MenuLocalizer.TranslateNotificationText(StripFormatting(message));
+
+            if (string.IsNullOrWhiteSpace(cleanedTitle))
+            {
+                cleanedTitle = "vMenu";
+            }
+
+            if (string.IsNullOrWhiteSpace(cleanedMessage))
+            {
+                return;
+            }
+
+            TriggerEvent("ox_lib:notify", new
+            {
+                type,
+                title = cleanedTitle,
+                description = cleanedMessage,
+                duration
+            });
+        }
+
         public static void CustomImage(string textureDict, string textureName, string message, string title, string subtitle, bool saveToBrief, int iconType = 0)
         {
             var chatTitle = !string.IsNullOrWhiteSpace(subtitle) ? subtitle : title;

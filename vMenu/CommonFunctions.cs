@@ -1051,12 +1051,12 @@ namespace vMenuClient
 
                         NetworkSetInSpectatorMode(false, 0); // disable spectating.
                         DoScreenFadeIn(500);
-                        Notify.Success("Stopped spectating.", false, true);
+                        Notify.OxLib("Spectate", "Stopped spectating.", "success");
                         currentlySpectatingPlayer = -1;
                     }
                     else
                     {
-                        Notify.Error("You can't spectate yourself.", false, true);
+                        Notify.OxLib("Spectate", "You can't spectate yourself.", "error");
                     }
                 }
                 else
@@ -1078,7 +1078,7 @@ namespace vMenuClient
                             }
 
                             DoScreenFadeIn(500);
-                            Notify.Success($"You are now spectating ~g~<C>{GetSafePlayerName(player.Name)}</C>~s~.", false, true);
+                            Notify.OxLib("Spectate", $"You are now spectating ~g~<C>{GetSafePlayerName(player.Name)}</C>~s~.", "success");
                             currentlySpectatingPlayer = player.Handle;
                         }
                         else
@@ -1091,7 +1091,7 @@ namespace vMenuClient
 
                             NetworkSetInSpectatorMode(false, 0); // disable spectating.
                             DoScreenFadeIn(500);
-                            Notify.Success("Stopped spectating.", false, true);
+                            Notify.OxLib("Spectate", "Stopped spectating.", "success");
                             currentlySpectatingPlayer = -1;
                         }
                     }
@@ -1112,7 +1112,7 @@ namespace vMenuClient
                             }
 
                             DoScreenFadeIn(500);
-                            Notify.Success($"You are now spectating ~g~<C>{GetSafePlayerName(player.Name)}</C>~s~.", false, true);
+                            Notify.OxLib("Spectate", $"You are now spectating ~g~<C>{GetSafePlayerName(player.Name)}</C>~s~.", "success");
                             currentlySpectatingPlayer = player.Handle;
                         }
                     }
