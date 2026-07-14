@@ -1099,6 +1099,27 @@ namespace vMenuServer
 
         #region Infinity bits
         // TODO: Replace this logic and all child logic with statebags (server set, client read)
+        private string GetPlayerListGroupLabel(int serverId)
+        {
+            try
+            {
+                if (GetResourceState("code6_selfmanage") == "started")
+                {
+                    var roleShort = Exports["code6_selfmanage"].GetCurrentRoleShortForSource(serverId);
+                    if (roleShort != null && !string.IsNullOrWhiteSpace(roleShort.ToString()))
+                    {
+                        return roleShort.ToString();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine($"[vMenu:PlayerList] code6_selfmanage role lookup failed: {e.Message}");
+            }
+
+            return NameSyncService.GetCurrentTerminalForServerId(serverId) ?? "";
+        }
+
         [EventHandler("vMenu:RequestPlayerList")]
         internal void RequestPlayerListFromPlayer([FromSource] Player player)
         {
@@ -1109,7 +1130,7 @@ namespace vMenuServer
                 {
                     n = p.Name,
                     s = serverId,
-                    t = NameSyncService.GetCurrentTerminalForServerId(serverId) ?? "",
+                    t = GetPlayerListGroupLabel(serverId),
                 };
             }));
         }

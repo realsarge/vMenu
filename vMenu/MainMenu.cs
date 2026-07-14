@@ -654,6 +654,43 @@ namespace vMenuClient
             return fallbackName;
         }
 
+        private const int MaxMenuHeaderLength = 32;
+
+        private static string StripTrailingRating(string text)
+        {
+            var separatorIndex = text.LastIndexOf(" | ", StringComparison.Ordinal);
+            if (separatorIndex < 0)
+            {
+                return text;
+            }
+
+            var suffix = text.Substring(separatorIndex + 3).Trim();
+            if (suffix.Length == 0)
+            {
+                return text;
+            }
+
+            foreach (var c in suffix)
+            {
+                if (!char.IsDigit(c) && c != ',')
+                {
+                    return text;
+                }
+            }
+
+            return text.Substring(0, separatorIndex).TrimEnd();
+        }
+
+        private static string FitMenuHeader(string text)
+        {
+            if (text.Length <= MaxMenuHeaderLength)
+            {
+                return text;
+            }
+
+            return text.Substring(0, MaxMenuHeaderLength - 3).TrimEnd() + "...";
+        }
+
         private static string SanitizeMenuHeader(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -685,13 +722,23 @@ namespace vMenuClient
                     continue;
                 }
 
+                if (c >= 0xD800 && c <= 0xDFFF)
+                {
+                    if ((c & 0xFC00) == 0xD800 && i + 1 < text.Length && (text[i + 1] & 0xFC00) == 0xDC00)
+                    {
+                        i++;
+                    }
+                    continue;
+                }
+
                 if (!char.IsControl(c))
                 {
                     chars.Add(c);
                 }
             }
 
-            var sanitized = new string(chars.ToArray()).Trim();
+            var sanitized = StripTrailingRating(new string(chars.ToArray()).Trim());
+            sanitized = FitMenuHeader(sanitized);
             return string.IsNullOrWhiteSpace(sanitized) ? GetSafePlayerName(Game.Player.Name) : sanitized;
         }
 
