@@ -198,8 +198,13 @@ namespace vMenuServer
                 var json = await HttpGetAsync(GetEndpoint());
                 var payload = JsonConvert.DeserializeObject<RemotePayload>(json);
 
-                _remoteBySteam = payload?.identifiers ??
-                                 new Dictionary<string, RemotePlayerInfo>(StringComparer.OrdinalIgnoreCase);
+                if (payload?.identifiers == null || payload.identifiers.Count == 0)
+                {
+                    Debug.WriteLine("[vMenu:NameSync] PullRemote returned no identifiers; keeping previous cache.");
+                    return;
+                }
+
+                _remoteBySteam = new Dictionary<string, RemotePlayerInfo>(payload.identifiers, StringComparer.OrdinalIgnoreCase);
 
                 Debug.WriteLine($"[vMenu:NameSync] Pulled {_remoteBySteam.Count} entries from JSON.");
             }

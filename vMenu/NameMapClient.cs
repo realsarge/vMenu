@@ -26,17 +26,24 @@ namespace vMenuClient
             {
                 var json = JsonConvert.SerializeObject(mapObj);
                 var any = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
+                if (any == null)
+                {
+                    return;
+                }
+
+                var freshNameMap = new Dictionary<int, string>();
+                foreach (var kv in any)
+                {
+                    if (int.TryParse(kv.Key, out var sid))
+                    {
+                        freshNameMap[sid] = kv.Value?.ToString() ?? string.Empty;
+                    }
+                }
 
                 NameMap.Clear();
-                if (any != null)
+                foreach (var kv in freshNameMap)
                 {
-                    foreach (var kv in any)
-                    {
-                        if (int.TryParse(kv.Key, out var sid))
-                        {
-                            NameMap[sid] = kv.Value?.ToString() ?? string.Empty;
-                        }
-                    }
+                    NameMap[kv.Key] = kv.Value;
                 }
             }
             catch (Exception e)
@@ -53,19 +60,31 @@ namespace vMenuClient
             {
                 var json = JsonConvert.SerializeObject(mapObj);
                 var any = JsonConvert.DeserializeObject<Dictionary<string, SyncedPlayerInfo>>(json);
+                if (any == null)
+                {
+                    return;
+                }
+
+                var freshNameMap = new Dictionary<int, string>();
+                var freshTerminalMap = new Dictionary<int, string>();
+                foreach (var kv in any)
+                {
+                    if (int.TryParse(kv.Key, out var sid))
+                    {
+                        freshNameMap[sid] = kv.Value?.name ?? string.Empty;
+                        freshTerminalMap[sid] = kv.Value?.current_terminal ?? string.Empty;
+                    }
+                }
 
                 NameMap.Clear();
                 TerminalMap.Clear();
-                if (any != null)
+                foreach (var kv in freshNameMap)
                 {
-                    foreach (var kv in any)
-                    {
-                        if (int.TryParse(kv.Key, out var sid))
-                        {
-                            NameMap[sid] = kv.Value?.name ?? string.Empty;
-                            TerminalMap[sid] = kv.Value?.current_terminal ?? string.Empty;
-                        }
-                    }
+                    NameMap[kv.Key] = kv.Value;
+                }
+                foreach (var kv in freshTerminalMap)
+                {
+                    TerminalMap[kv.Key] = kv.Value;
                 }
             }
             catch (Exception e)

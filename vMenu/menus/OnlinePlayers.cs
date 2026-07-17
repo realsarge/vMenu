@@ -38,6 +38,7 @@ namespace vMenuClient.menus
         }
 
         public bool IsPlayerListOpen => menu?.Visible == true || playerMenu.Visible;
+        private const int MaxPlayerListRowLength = 56;
 
         private static string SanitizeForMenu(string text)
         {
@@ -90,6 +91,16 @@ namespace vMenuClient.menus
             return new string(chars, 0, index);
         }
 
+        private static string FitPlayerListRow(string text)
+        {
+            if (string.IsNullOrEmpty(text) || text.Length <= MaxPlayerListRowLength)
+            {
+                return text;
+            }
+
+            return text.Substring(0, MaxPlayerListRowLength - 3).TrimEnd() + "...";
+        }
+
         private string ResolveDisplayName(IPlayer player)
         {
             if (player != null && NameMapClient.NameMap.TryGetValue(player.ServerId, out var name) && !string.IsNullOrWhiteSpace(name))
@@ -124,8 +135,9 @@ namespace vMenuClient.menus
         {
             var name = SanitizeForMenu(ResolveDisplayName(player));
             var terminal = SanitizeForMenu(ResolveCurrentTerminal(player));
+            var row = string.IsNullOrEmpty(terminal) ? name : $"{name} ({terminal})";
 
-            return string.IsNullOrEmpty(terminal) ? name : $"{name} ({terminal})";
+            return FitPlayerListRow(row);
         }
 
 
