@@ -72,6 +72,11 @@ namespace vMenuClient
         public MainMenu()
         {
             PlayersList = new NativePlayerList(Players);
+            HiddenPlayers.OnUpdated += () =>
+            {
+                FunctionsController.refreshCharacterNames();
+                _ = OnlinePlayersMenu?.UpdatePlayerlist();
+            };
 
             #region cleanup unused kvps
             var tmp_kvp_handle = StartFindKvp("");
@@ -338,6 +343,8 @@ namespace vMenuClient
             {
                 PlayersList = new InfinityPlayerList(Players);
             }
+
+            TriggerServerEvent("vMenu:RequestHiddenPlayers");
         }
 
         #region Infinity bits
@@ -345,6 +352,23 @@ namespace vMenuClient
         public void ReceivedPlayerList(IList<object> players)
         {
             PlayersList?.ReceivedPlayerList(players);
+        }
+
+        [EventHandler("vMenu:HiddenPlayers")]
+        public void ReceivedHiddenPlayers(string hiddenPlayersJson)
+        {
+            try
+            {
+                var hiddenServerIds = JsonConvert.DeserializeObject<List<int>>(hiddenPlayersJson ?? "[]") ?? new List<int>();
+                HiddenPlayers.SetServerIds(hiddenServerIds);
+            }
+            catch (Exception e)
+            {
+                if (DebugMode)
+                {
+                    Debug.WriteLine($"[vMenu] Failed to parse hidden players payload: {e.Message}");
+                }
+            }
         }
 
         struct RPCData

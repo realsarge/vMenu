@@ -61,6 +61,8 @@ namespace vMenuServer
     {
         private const string FitPresetsConfigPath = "config/fit_presets.json";
         private const string MenuLocalizationConfigPath = "config/menu_localizer.json";
+        private const string HiddenSteamIdsConvar = "vmenu_hidden_steam_ids";
+        private static readonly char[] HiddenSteamIdSeparators = { ',', ';', ' ', '\r', '\n', '\t' };
 
         private sealed class FitPresetConfigFile
         {
@@ -257,6 +259,7 @@ namespace vMenuServer
                 }));
                 EventHandlers.Add("vMenu:RequestFitPresets", new Action<Player>(OnRequestFitPresets));
                 EventHandlers.Add("vMenu:RequestMenuLocalization", new Action<Player>(OnRequestMenuLocalization));
+                EventHandlers.Add("vMenu:RequestHiddenPlayers", new Action<Player>(OnRequestHiddenPlayers));
 
                 // check addons file for errors
                 var addons = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
@@ -1099,6 +1102,103 @@ namespace vMenuServer
 
         #region Infinity bits
         // TODO: Replace this logic and all child logic with statebags (server set, client read)
+        private static HashSet<string> GetHiddenSteamIdentifiers()
+        {
+            var hiddenSteamIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var configuredSteamIds = GetConvar(HiddenSteamIdsConvar, string.Empty);
+
+            foreach (var configuredSteamId in configuredSteamIds.Split(HiddenSteamIdSeparators, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var normalizedSteamId = NormalizeSteamIdentifier(configuredSteamId);
+                if (!string.IsNullOrEmpty(normalizedSteamId))
+                {
+                    hiddenSteamIds.Add(normalizedSteamId);
+                }
+            }
+
+            return hiddenSteamIds;
+        }
+
+        private static string NormalizeSteamIdentifier(string identifier)
+        {
+            var normalizedIdentifier = identifier?.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(normalizedIdentifier))
+            {
+                return null;
+            }
+
+            if (!normalizedIdentifier.StartsWith("steam:", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedIdentifier = $"steam:{normalizedIdentifier}";
+            }
+
+            return normalizedIdentifier;
+        }
+
+        private static string GetSteamIdentifier(Player player)
+        {
+            return player?.Identifiers
+                .FirstOrDefault(identifier => !string.IsNullOrEmpty(identifier) && identifier.StartsWith("steam:", StringComparison.OrdinalIgnoreCase))
+                ?.ToLowerInvariant();
+        }
+
+        private static bool IsHiddenPlayer(Player player, HashSet<string> hiddenSteamIds)
+        {
+            if (hiddenSteamIds.Count == 0)
+            {
+                return false;
+            }
+
+            var steamIdentifier = GetSteamIdentifier(player);
+            return !string.IsNullOrEmpty(steamIdentifier) && hiddenSteamIds.Contains(steamIdentifier);
+        }
+
+        private HashSet<int> GetHiddenPlayerServerIds()
+        {
+            var hiddenServerIds = new HashSet<int>();
+            var hiddenSteamIds = GetHiddenSteamIdentifiers();
+
+            if (hiddenSteamIds.Count == 0)
+            {
+                return hiddenServerIds;
+            }
+
+            foreach (var player in Players)
+            {
+                if (!int.TryParse(player.Handle, out var serverId))
+                {
+                    continue;
+                }
+
+                if (IsHiddenPlayer(player, hiddenSteamIds))
+                {
+                    hiddenServerIds.Add(serverId);
+                }
+            }
+
+            return hiddenServerIds;
+        }
+
+        private void SendHiddenPlayersToPlayer(Player player)
+        {
+            if (player == null)
+            {
+                return;
+            }
+
+            player.TriggerEvent("vMenu:HiddenPlayers", JsonConvert.SerializeObject(GetHiddenPlayerServerIds()));
+        }
+
+        private void BroadcastHiddenPlayers()
+        {
+            var hiddenPlayersJson = JsonConvert.SerializeObject(GetHiddenPlayerServerIds());
+
+            foreach (var player in Players)
+            {
+                player.TriggerEvent("vMenu:HiddenPlayers", hiddenPlayersJson);
+            }
+        }
+
         private string GetPlayerListGroupLabel(int serverId)
         {
             try
@@ -1123,16 +1223,30 @@ namespace vMenuServer
         [EventHandler("vMenu:RequestPlayerList")]
         internal void RequestPlayerListFromPlayer([FromSource] Player player)
         {
-            player.TriggerEvent("vMenu:ReceivePlayerList", Players.Select(p =>
+            var hiddenServerIds = GetHiddenPlayerServerIds();
+            var listedPlayers = new List<object>();
+
+            foreach (var p in Players)
             {
-                var serverId = int.Parse(p.Handle);
-                return new
+                if (!int.TryParse(p.Handle, out var serverId) || hiddenServerIds.Contains(serverId))
+                {
+                    continue;
+                }
+
+                listedPlayers.Add(new
                 {
                     n = p.Name,
                     s = serverId,
                     t = GetPlayerListGroupLabel(serverId),
-                };
-            }));
+                });
+            }
+
+            player.TriggerEvent("vMenu:ReceivePlayerList", listedPlayers);
+        }
+
+        private void OnRequestHiddenPlayers([FromSource] Player sourcePlayer)
+        {
+            SendHiddenPlayersToPlayer(sourcePlayer);
         }
 
         [EventHandler("vMenu:GetPlayerCoords")]
@@ -1198,6 +1312,7 @@ namespace vMenuServer
                 PermissionsManager.SetPermissionsForPlayer(player);
                 SendFitPresetsToPlayer(player);
                 SendMenuLocalizationToPlayer(player);
+                SendHiddenPlayersToPlayer(player);
             }
         }
 
@@ -1209,6 +1324,7 @@ namespace vMenuServer
             PermissionsManager.SetPermissionsForPlayer(sourcePlayer);
             SendFitPresetsToPlayer(sourcePlayer);
             SendMenuLocalizationToPlayer(sourcePlayer);
+            BroadcastHiddenPlayers();
 
             string sourcePlayerName = sourcePlayer.Name;
 
@@ -1227,6 +1343,7 @@ namespace vMenuServer
             }
 
             joinedPlayers.Remove(sourcePlayer.Handle);
+            BroadcastHiddenPlayers();
 
             if (int.TryParse(sourcePlayer.Handle, out var sourceServerId) && CharacterNames.Remove(sourceServerId))
             {

@@ -29,6 +29,44 @@ namespace vMenuClient
         Task WaitRequested();
     }
 
+    public static class HiddenPlayers
+    {
+        private static readonly HashSet<int> serverIds = new();
+
+        public static event Action OnUpdated;
+
+        public static bool IsHidden(int serverId)
+        {
+            return serverIds.Contains(serverId);
+        }
+
+        public static void SetServerIds(IEnumerable<int> hiddenServerIds)
+        {
+            var nextServerIds = new HashSet<int>();
+
+            foreach (var serverId in hiddenServerIds ?? Array.Empty<int>())
+            {
+                if (serverId > 0)
+                {
+                    nextServerIds.Add(serverId);
+                }
+            }
+
+            if (serverIds.SetEquals(nextServerIds))
+            {
+                return;
+            }
+
+            serverIds.Clear();
+            foreach (var serverId in nextServerIds)
+            {
+                serverIds.Add(serverId);
+            }
+
+            OnUpdated?.Invoke();
+        }
+    }
+
     public class NativePlayer : IPlayer
     {
         private readonly Player player;
@@ -61,6 +99,11 @@ namespace vMenuClient
         {
             foreach (var player in playerList)
             {
+                if (HiddenPlayers.IsHidden(player.ServerId))
+                {
+                    continue;
+                }
+
                 yield return new NativePlayer(player);
             }
         }
@@ -83,10 +126,7 @@ namespace vMenuClient
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            foreach (var player in playerList)
-            {
-                yield return new NativePlayer(player);
-            }
+            return GetEnumerator();
         }
     }
 
@@ -147,13 +187,18 @@ namespace vMenuClient
 
             foreach (var player in playerList)
             {
+                if (HiddenPlayers.IsHidden(player.ServerId))
+                {
+                    continue;
+                }
+
                 yield return new NativePlayer(player);
                 nearPlayers.Add(player.ServerId);
             }
 
             foreach (var player in remotePlayerList)
             {
-                if (!nearPlayers.Contains(player.Value.ServerId))
+                if (!HiddenPlayers.IsHidden(player.Value.ServerId) && !nearPlayers.Contains(player.Value.ServerId))
                 {
                     yield return player.Value;
                 }
@@ -192,6 +237,11 @@ namespace vMenuClient
                             var currentTerminal = playerDict.TryGetValue("t", out var terminalObj)
                                 ? terminalObj?.ToString() ?? string.Empty
                                 : string.Empty;
+
+                            if (HiddenPlayers.IsHidden(serverId))
+                            {
+                                continue;
+                            }
 
                             remotePlayerList[serverId] = new InfinityPlayer(serverId, name, currentTerminal);
                         }

@@ -2361,8 +2361,8 @@ namespace vMenuClient
         #endregion
 
         #region player overhead names
-        private static readonly Dictionary<Player, int> gamerTags = new();
-        private static readonly Dictionary<Player, string> gamerTagText = new();
+        private static readonly Dictionary<int, int> gamerTags = new();
+        private static readonly Dictionary<int, string> gamerTagText = new();
 
         private readonly float playerNamesDistance = GetSettingsFloat(Setting.vmenu_player_names_distance) > 10f ? GetSettingsFloat(Setting.vmenu_player_names_distance) : 500f;
 
@@ -2420,6 +2420,7 @@ namespace vMenuClient
             }
 
             gamerTags.Clear();
+            gamerTagText.Clear();
         }
 
         /// <summary>
@@ -2430,12 +2431,27 @@ namespace vMenuClient
         {
             await Delay(500);
 
+            var activeServerIds = new HashSet<int>();
+
             foreach (var player in Players)
             {
                 if (player?.Character == null || !player.Character.Exists())
                 {
                     continue;
                 }
+
+                var serverId = player.ServerId;
+                if (serverId <= 0)
+                {
+                    continue;
+                }
+
+                if (HiddenPlayers.IsHidden(serverId))
+                {
+                    continue;
+                }
+
+                activeServerIds.Add(serverId);
 
                 var distSquared = player.Character.Position.DistanceToSquared(Game.PlayerPed.Position);
                 var closeEnough = distSquared < playerNamesDistance;
@@ -2460,22 +2476,22 @@ namespace vMenuClient
                     label = tag;
                 }
 
-                if (gamerTags.ContainsKey(player))
+                if (gamerTags.ContainsKey(serverId))
                 {
                     if (!closeEnough || !altHeld || string.IsNullOrWhiteSpace(label))
                     {
-                        RemoveMpGamerTag(gamerTags[player]);
-                        gamerTags.Remove(player);
-                        gamerTagText.Remove(player);
+                        RemoveMpGamerTag(gamerTags[serverId]);
+                        gamerTags.Remove(serverId);
+                        gamerTagText.Remove(serverId);
                     }
                     else
                     {
-                        if (!gamerTagText.TryGetValue(player, out var previousLabel) || !string.Equals(previousLabel, label, StringComparison.Ordinal))
+                        if (!gamerTagText.TryGetValue(serverId, out var previousLabel) || !string.Equals(previousLabel, label, StringComparison.Ordinal))
                         {
-                            RemoveMpGamerTag(gamerTags[player]);
+                            RemoveMpGamerTag(gamerTags[serverId]);
                             var handle = CreateMpGamerTag(player.Character.Handle, label, false, false, "", 0);
-                            gamerTags[player] = handle;
-                            gamerTagText[player] = label;
+                            gamerTags[serverId] = handle;
+                            gamerTagText[serverId] = label;
 
                             SetMpGamerTagColour(handle, 0, 13);
                             SetMpGamerTagVisibility(handle, 2, false);
@@ -2484,15 +2500,15 @@ namespace vMenuClient
                         }
                         else
                         {
-                            SetMpGamerTagColour(gamerTags[player], 0, 13);
+                            SetMpGamerTagColour(gamerTags[serverId], 0, 13);
                         }
                     }
                 }
                 else if (closeEnough && altHeld && !string.IsNullOrWhiteSpace(label))
                 {
                     var handle = CreateMpGamerTag(player.Character.Handle, label, false, false, "", 0);
-                    gamerTags.Add(player, handle);
-                    gamerTagText[player] = label;
+                    gamerTags.Add(serverId, handle);
+                    gamerTagText[serverId] = label;
 
                     SetMpGamerTagColour(handle, 0, 13);
                     SetMpGamerTagVisibility(handle, 2, false);
@@ -2500,10 +2516,18 @@ namespace vMenuClient
                     SetMpGamerTagVisibility(handle, 7, false);
                 }
 
-                if (closeEnough && altHeld && gamerTags.ContainsKey(player))
+                if (closeEnough && altHeld && gamerTags.ContainsKey(serverId))
                 {
-                    SetMpGamerTagAlpha(gamerTags[player], 0, 200);
+                    SetMpGamerTagAlpha(gamerTags[serverId], 0, 200);
                 }
+            }
+
+            var staleServerIds = gamerTags.Keys.Where(serverId => !activeServerIds.Contains(serverId)).ToList();
+            foreach (var serverId in staleServerIds)
+            {
+                RemoveMpGamerTag(gamerTags[serverId]);
+                gamerTags.Remove(serverId);
+                gamerTagText.Remove(serverId);
             }
         }
         #endregion
