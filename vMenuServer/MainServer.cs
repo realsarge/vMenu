@@ -61,8 +61,6 @@ namespace vMenuServer
     {
         private const string FitPresetsConfigPath = "config/fit_presets.json";
         private const string MenuLocalizationConfigPath = "config/menu_localizer.json";
-        private const string HiddenSteamIdsConvar = "vmenu_hidden_steam_ids";
-        private static readonly char[] HiddenSteamIdSeparators = { ',', ';', ' ', '\r', '\n', '\t' };
 
         private sealed class FitPresetConfigFile
         {
@@ -1102,81 +1100,9 @@ namespace vMenuServer
 
         #region Infinity bits
         // TODO: Replace this logic and all child logic with statebags (server set, client read)
-        private static HashSet<string> GetHiddenSteamIdentifiers()
-        {
-            var hiddenSteamIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var configuredSteamIds = GetConvar(HiddenSteamIdsConvar, string.Empty);
-
-            foreach (var configuredSteamId in configuredSteamIds.Split(HiddenSteamIdSeparators, StringSplitOptions.RemoveEmptyEntries))
-            {
-                var normalizedSteamId = NormalizeSteamIdentifier(configuredSteamId);
-                if (!string.IsNullOrEmpty(normalizedSteamId))
-                {
-                    hiddenSteamIds.Add(normalizedSteamId);
-                }
-            }
-
-            return hiddenSteamIds;
-        }
-
-        private static string NormalizeSteamIdentifier(string identifier)
-        {
-            var normalizedIdentifier = identifier?.Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(normalizedIdentifier))
-            {
-                return null;
-            }
-
-            if (!normalizedIdentifier.StartsWith("steam:", StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedIdentifier = $"steam:{normalizedIdentifier}";
-            }
-
-            return normalizedIdentifier;
-        }
-
-        private static string GetSteamIdentifier(Player player)
-        {
-            return player?.Identifiers
-                .FirstOrDefault(identifier => !string.IsNullOrEmpty(identifier) && identifier.StartsWith("steam:", StringComparison.OrdinalIgnoreCase))
-                ?.ToLowerInvariant();
-        }
-
-        private static bool IsHiddenPlayer(Player player, HashSet<string> hiddenSteamIds)
-        {
-            if (hiddenSteamIds.Count == 0)
-            {
-                return false;
-            }
-
-            var steamIdentifier = GetSteamIdentifier(player);
-            return !string.IsNullOrEmpty(steamIdentifier) && hiddenSteamIds.Contains(steamIdentifier);
-        }
-
         private HashSet<int> GetHiddenPlayerServerIds()
         {
-            var hiddenServerIds = new HashSet<int>();
-            var hiddenSteamIds = GetHiddenSteamIdentifiers();
-
-            if (hiddenSteamIds.Count == 0)
-            {
-                return hiddenServerIds;
-            }
-
-            foreach (var player in Players)
-            {
-                if (!int.TryParse(player.Handle, out var serverId))
-                {
-                    continue;
-                }
-
-                if (IsHiddenPlayer(player, hiddenSteamIds))
-                {
-                    hiddenServerIds.Add(serverId);
-                }
-            }
-
-            return hiddenServerIds;
+            return HiddenPlayerConfig.GetHiddenPlayerServerIds(Players);
         }
 
         private void SendHiddenPlayersToPlayer(Player player)

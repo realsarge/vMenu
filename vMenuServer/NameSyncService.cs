@@ -47,10 +47,10 @@ namespace vMenuServer
             Exports.Add("GetDisplayName", new Func<int, string>(GetDisplayName));
             Exports.Add("GetDisplayNameBySteam", new Func<string, string>(GetDisplayNameBySteam));
             Exports.Add("GetAllDisplayNames", new Func<IDictionary<int, string>>(() =>
-                new Dictionary<int, string>(_serverNameMap)));
+                GetVisibleServerNameMap()));
             Exports.Add("GetCurrentTerminal", new Func<int, string>(GetCurrentTerminal));
             Exports.Add("GetAllCurrentTerminals", new Func<IDictionary<int, string>>(() =>
-                new Dictionary<int, string>(_serverTerminalMap)));
+                GetVisibleServerTerminalMap()));
             Exports.Add("GetFullInfoBySteam", new Func<string, IDictionary<string, string>>(GetFullInfoBySteam));
             Exports.Add("GetAllFullInfo", new Func<IDictionary<string, IDictionary<string, string>>>(GetAllFullInfo));
 
@@ -107,6 +107,11 @@ namespace vMenuServer
                 return null;
             }
 
+            if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steamHex))
+            {
+                return null;
+            }
+
             if (_remoteBySteam.TryGetValue(steamHex, out var info))
             {
                 return new Dictionary<string, string>
@@ -128,6 +133,11 @@ namespace vMenuServer
             var map = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             foreach (var kv in _remoteBySteam)
             {
+                if (HiddenPlayerConfig.IsHiddenSteamIdentifier(kv.Key))
+                {
+                    continue;
+                }
+
                 map[kv.Key] = new Dictionary<string, string>
                 {
                     ["name"] = kv.Value?.name ?? "",
@@ -146,7 +156,7 @@ namespace vMenuServer
             try
             {
                 RebuildLocalMap();
-                player?.TriggerEvent("vMenu:NameMapUpdated", _serverNameMap);
+                player?.TriggerEvent("vMenu:NameMapUpdated", GetVisibleServerNameMap());
                 player?.TriggerEvent("vMenu:PlayerInfoMapUpdated", BuildPlayerInfoMap());
             }
             catch (Exception e)
@@ -219,13 +229,14 @@ namespace vMenuServer
             try
             {
                 RebuildLocalMap();
+                var nameMap = GetVisibleServerNameMap();
                 var infoMap = BuildPlayerInfoMap();
 
                 foreach (var player in Players)
                 {
                     try
                     {
-                        player.TriggerEvent("vMenu:NameMapUpdated", _serverNameMap);
+                        player.TriggerEvent("vMenu:NameMapUpdated", nameMap);
                         player.TriggerEvent("vMenu:PlayerInfoMapUpdated", infoMap);
                     }
                     catch (Exception e)
@@ -255,6 +266,11 @@ namespace vMenuServer
                 }
 
                 var steam = GetSteamHexFor(sid);
+                if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steam))
+                {
+                    continue;
+                }
+
                 if (!string.IsNullOrEmpty(steam) &&
                     _remoteBySteam.TryGetValue(steam, out var info))
                 {
@@ -275,8 +291,15 @@ namespace vMenuServer
         private Dictionary<int, PlayerSyncInfo> BuildPlayerInfoMap()
         {
             var map = new Dictionary<int, PlayerSyncInfo>();
+            var hiddenServerIds = HiddenPlayerConfig.GetHiddenPlayerServerIds(Players);
+
             foreach (var kv in _serverNameMap)
             {
+                if (hiddenServerIds.Contains(kv.Key))
+                {
+                    continue;
+                }
+
                 _serverTerminalMap.TryGetValue(kv.Key, out var terminal);
                 map[kv.Key] = new PlayerSyncInfo
                 {
@@ -286,6 +309,22 @@ namespace vMenuServer
             }
 
             return map;
+        }
+
+        private Dictionary<int, string> GetVisibleServerNameMap()
+        {
+            var hiddenServerIds = HiddenPlayerConfig.GetHiddenPlayerServerIds(Players);
+            return _serverNameMap
+                .Where(kv => !hiddenServerIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
+
+        private Dictionary<int, string> GetVisibleServerTerminalMap()
+        {
+            var hiddenServerIds = HiddenPlayerConfig.GetHiddenPlayerServerIds(Players);
+            return _serverTerminalMap
+                .Where(kv => !hiddenServerIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
         }
 
         private static string GetSteamHexFor(int serverId)
@@ -329,6 +368,12 @@ namespace vMenuServer
 
         private string GetDisplayName(int serverId)
         {
+            var steam = GetSteamHexFor(serverId);
+            if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steam))
+            {
+                return null;
+            }
+
             if (_serverNameMap.TryGetValue(serverId, out var name) && !string.IsNullOrWhiteSpace(name))
             {
                 return name;
@@ -337,7 +382,6 @@ namespace vMenuServer
             var player = Players.FirstOrDefault(p => int.TryParse(p.Handle, out var sid) && sid == serverId);
             if (player != null)
             {
-                var steam = GetSteamHexFor(serverId);
                 if (!string.IsNullOrEmpty(steam) &&
                     _remoteBySteam.TryGetValue(steam, out var info))
                 {
@@ -361,12 +405,17 @@ namespace vMenuServer
 
         private string GetCurrentTerminal(int serverId)
         {
+            var steam = GetSteamHexFor(serverId);
+            if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steam))
+            {
+                return null;
+            }
+
             if (_serverTerminalMap.TryGetValue(serverId, out var terminal))
             {
                 return terminal;
             }
 
-            var steam = GetSteamHexFor(serverId);
             if (!string.IsNullOrEmpty(steam) &&
                 _remoteBySteam.TryGetValue(steam, out var info))
             {
@@ -379,6 +428,11 @@ namespace vMenuServer
         private string GetDisplayNameBySteam(string steamHex)
         {
             if (string.IsNullOrWhiteSpace(steamHex))
+            {
+                return null;
+            }
+
+            if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steamHex))
             {
                 return null;
             }
