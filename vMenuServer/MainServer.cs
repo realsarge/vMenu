@@ -491,7 +491,7 @@ namespace vMenuServer
                             if (p != null)
                             {
                                 var ban = new BanManager.BanRecord(
-                                    BanManager.GetSafePlayerName(p.Name),
+                                    BanManager.GetSafePlayerName(NameSyncService.GetPlayerDisplayName(p)),
                                     p.Identifiers.ToList(),
                                     new DateTime(3000, 1, 1),
                                     reason,
@@ -500,7 +500,7 @@ namespace vMenuServer
                                 );
 
                                 BanManager.AddBan(ban);
-                                BanManager.BanLog($"[vMenu] Player {p.Name}^7 has been banned by Server Console for [{reason}].");
+                                BanManager.BanLog($"[vMenu] Player {NameSyncService.GetPlayerDisplayName(p)}^7 has been banned by Server Console for [{reason}].");
                                 TriggerEvent("vMenu:BanSuccessful", JsonConvert.SerializeObject(ban).ToString());
                                 var timeRemaining = BanManager.GetRemainingTimeMessage(ban.bannedUntil.Subtract(DateTime.Now));
                                 p.Drop($"You are banned from this server. Ban time remaining: {timeRemaining}. Banned by: {ban.bannedBy}. Ban reason: {ban.banReason}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.");
@@ -914,9 +914,9 @@ namespace vMenuServer
                 return;
             }
 
-            KickLog($"Player: {source.Name} has kicked: {targetPlayer.Name} for: {kickReason}.");
+            KickLog($"Player: {NameSyncService.GetPlayerDisplayName(source)} has kicked: {NameSyncService.GetPlayerDisplayName(targetPlayer)} for: {kickReason}.");
 
-            source.TriggerEvent("vMenu:Notify", $"The target player (<C>{targetPlayer.Name}</C>) has been kicked.");
+            source.TriggerEvent("vMenu:Notify", $"The target player (<C>{NameSyncService.GetPlayerDisplayName(targetPlayer)}</C>) has been kicked.");
 
             targetPlayer.Drop(kickReason);
         }
@@ -942,7 +942,7 @@ namespace vMenuServer
                 return;
             }
 
-            targetPlayer.TriggerEvent("vMenu:KillMe", source.Name);
+            targetPlayer.TriggerEvent("vMenu:KillMe", NameSyncService.GetPlayerDisplayName(source));
         }
 
         /// <summary>
@@ -1161,7 +1161,7 @@ namespace vMenuServer
 
                 listedPlayers.Add(new
                 {
-                    n = p.Name,
+                    n = NameSyncService.GetPlayerDisplayName(p),
                     s = serverId,
                     t = GetPlayerListGroupLabel(serverId),
                 });
@@ -1252,7 +1252,7 @@ namespace vMenuServer
             SendMenuLocalizationToPlayer(sourcePlayer);
             BroadcastHiddenPlayers();
 
-            string sourcePlayerName = sourcePlayer.Name;
+            string sourcePlayerName = NameSyncService.GetPlayerDisplayName(sourcePlayer);
 
             foreach (Player notifPlayer in GetJoinQuitNotifPlayers())
             {
@@ -1276,7 +1276,7 @@ namespace vMenuServer
                 BroadcastCharacterNames();
             }
 
-            string sourcePlayerName = sourcePlayer.Name;
+            string sourcePlayerName = NameSyncService.GetPlayerDisplayName(sourcePlayer);
             
             foreach (Player notifPlayer in GetJoinQuitNotifPlayers())
             {

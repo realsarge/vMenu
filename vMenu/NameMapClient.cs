@@ -11,7 +11,12 @@ namespace vMenuClient
     {
         public static readonly Dictionary<int, string> NameMap = new Dictionary<int, string>();
         public static readonly Dictionary<int, string> TerminalMap = new Dictionary<int, string>();
+        public static readonly Dictionary<int, string> HeaderNameMap = new Dictionary<int, string>();
+        public static readonly Dictionary<int, string> TagMap = new Dictionary<int, string>();
         public static event Action OnUpdated;
+
+        public static string ResolveName(int serverId, string fallback) =>
+            NameMap.TryGetValue(serverId, out var name) && !string.IsNullOrWhiteSpace(name) ? name : fallback;
 
         public NameMapClient()
         {
@@ -67,17 +72,23 @@ namespace vMenuClient
 
                 var freshNameMap = new Dictionary<int, string>();
                 var freshTerminalMap = new Dictionary<int, string>();
+                var freshHeaderMap = new Dictionary<int, string>();
+                var freshTagMap = new Dictionary<int, string>();
                 foreach (var kv in any)
                 {
                     if (int.TryParse(kv.Key, out var sid))
                     {
                         freshNameMap[sid] = kv.Value?.name ?? string.Empty;
                         freshTerminalMap[sid] = kv.Value?.current_terminal ?? string.Empty;
+                        freshHeaderMap[sid] = kv.Value?.plain_name ?? kv.Value?.name ?? string.Empty;
+                        freshTagMap[sid] = kv.Value?.tag ?? string.Empty;
                     }
                 }
 
                 NameMap.Clear();
                 TerminalMap.Clear();
+                HeaderNameMap.Clear();
+                TagMap.Clear();
                 foreach (var kv in freshNameMap)
                 {
                     NameMap[kv.Key] = kv.Value;
@@ -86,6 +97,8 @@ namespace vMenuClient
                 {
                     TerminalMap[kv.Key] = kv.Value;
                 }
+                foreach (var kv in freshHeaderMap) HeaderNameMap[kv.Key] = kv.Value;
+                foreach (var kv in freshTagMap) TagMap[kv.Key] = kv.Value;
             }
             catch (Exception e)
             {
@@ -103,6 +116,8 @@ namespace vMenuClient
         private sealed class SyncedPlayerInfo
         {
             public string name { get; set; }
+            public string plain_name { get; set; }
+            public string tag { get; set; }
             public string current_terminal { get; set; }
         }
     }

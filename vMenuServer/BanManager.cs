@@ -198,11 +198,11 @@ namespace vMenuServer
                                                 /* ban forever */ new DateTime(3000, 1, 1);
 
                         var ban = new BanRecord(
-                            GetSafePlayerName(target.Name),
+                            GetSafePlayerName(NameSyncService.GetPlayerDisplayName(target)),
                             target.Identifiers.ToList(),
                             banduration,
                             banReason,
-                            GetSafePlayerName(source.Name),
+                            GetSafePlayerName(NameSyncService.GetPlayerDisplayName(source)),
                             Guid.NewGuid()
                         );
 
@@ -344,7 +344,7 @@ namespace vMenuServer
                     reason = $"You have been automatically banned. If you believe this was done by error, please contact the server owner for support. Aditional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.";
                 }
                 var ban = new BanRecord(
-                    GetSafePlayerName(source.Name),
+                    GetSafePlayerName(NameSyncService.GetPlayerDisplayName(source)),
                     source.Identifiers.ToList(),
                     new DateTime(3000, 1, 1),
                     reason,

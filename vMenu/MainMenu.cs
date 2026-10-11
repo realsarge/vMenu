@@ -670,7 +670,7 @@ namespace vMenuClient
         {
             var fallbackName = GetSafePlayerName(Game.Player.Name);
 
-            if (NameMapClient.NameMap.TryGetValue(Game.Player.ServerId, out var displayName) && !string.IsNullOrWhiteSpace(displayName))
+            if (NameMapClient.HeaderNameMap.TryGetValue(Game.Player.ServerId, out var displayName) && !string.IsNullOrWhiteSpace(displayName))
             {
                 return SanitizeMenuHeader(displayName);
             }
@@ -679,31 +679,6 @@ namespace vMenuClient
         }
 
         private const int MaxMenuHeaderLength = 32;
-
-        private static string StripTrailingRating(string text)
-        {
-            var separatorIndex = text.LastIndexOf(" | ", StringComparison.Ordinal);
-            if (separatorIndex < 0)
-            {
-                return text;
-            }
-
-            var suffix = text.Substring(separatorIndex + 3).Trim();
-            if (suffix.Length == 0)
-            {
-                return text;
-            }
-
-            foreach (var c in suffix)
-            {
-                if (!char.IsDigit(c) && c != ',')
-                {
-                    return text;
-                }
-            }
-
-            return text.Substring(0, separatorIndex).TrimEnd();
-        }
 
         private static string FitMenuHeader(string text)
         {
@@ -761,7 +736,7 @@ namespace vMenuClient
                 }
             }
 
-            var sanitized = StripTrailingRating(new string(chars.ToArray()).Trim());
+            var sanitized = new string(chars.ToArray()).Trim();
             sanitized = FitMenuHeader(sanitized);
             return string.IsNullOrWhiteSpace(sanitized) ? GetSafePlayerName(Game.Player.Name) : sanitized;
         }

@@ -1078,7 +1078,7 @@ namespace vMenuClient
                             }
 
                             DoScreenFadeIn(500);
-                            Notify.OxLib("Spectate", $"You are now spectating ~g~<C>{GetSafePlayerName(player.Name)}</C>~s~.", "success");
+                            Notify.OxLib("Spectate", $"You are now spectating ~g~<C>{GetSafePlayerName(NameMapClient.ResolveName(player.ServerId, player.Name))}</C>~s~.", "success");
                             currentlySpectatingPlayer = player.Handle;
                         }
                         else
@@ -1112,7 +1112,7 @@ namespace vMenuClient
                             }
 
                             DoScreenFadeIn(500);
-                            Notify.OxLib("Spectate", $"You are now spectating ~g~<C>{GetSafePlayerName(player.Name)}</C>~s~.", "success");
+                            Notify.OxLib("Spectate", $"You are now spectating ~g~<C>{GetSafePlayerName(NameMapClient.ResolveName(player.ServerId, player.Name))}</C>~s~.", "success");
                             currentlySpectatingPlayer = player.Handle;
                         }
                     }

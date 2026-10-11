@@ -1,469 +1,269 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-using System.Net;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-
 using CitizenFX.Core;
 using CitizenFX.Core.Native;
-
 using Newtonsoft.Json;
-
-using static vMenuShared.ConfigManager;
 
 namespace vMenuServer
 {
+    // Adapter only: code6_selfmanage owns resolution, HTTP and last-known identities.
     public class NameSyncService : BaseScript
     {
-        private const string EndpointBase = "https://code6.ru/api/gamesync.php?key=HWN3b73T&no-emoji=1&setting=";
-
         public static NameSyncService Current { get; private set; }
-
-        private Dictionary<string, RemotePlayerInfo> _remoteBySteam =
-            new Dictionary<string, RemotePlayerInfo>(StringComparer.OrdinalIgnoreCase);
-
         private readonly Dictionary<int, string> _serverNameMap = new Dictionary<int, string>();
         private readonly Dictionary<int, string> _serverTerminalMap = new Dictionary<int, string>();
-
-        static NameSyncService()
-        {
-            try
-            {
-                ServicePointManager.SecurityProtocol =
-                    SecurityProtocolType.Tls12 | (SecurityProtocolType)0x00000C00;
-                ServicePointManager.ServerCertificateValidationCallback = IgnoreBadCerts;
-            }
-            catch
-            {
-            }
-        }
+        private readonly Dictionary<int, IdentitySnapshot> _lastKnown = new Dictionary<int, IdentitySnapshot>();
+        private readonly Dictionary<int, string> _sessions = new Dictionary<int, string>();
+        private bool _providerWarning;
 
         public NameSyncService()
         {
             Current = this;
-
             Exports.Add("GetDisplayName", new Func<int, string>(GetDisplayName));
             Exports.Add("GetDisplayNameBySteam", new Func<string, string>(GetDisplayNameBySteam));
-            Exports.Add("GetAllDisplayNames", new Func<IDictionary<int, string>>(() =>
-                GetVisibleServerNameMap()));
+            Exports.Add("GetAllDisplayNames", new Func<IDictionary<int, string>>(() => GetVisibleServerNameMap()));
             Exports.Add("GetCurrentTerminal", new Func<int, string>(GetCurrentTerminal));
-            Exports.Add("GetAllCurrentTerminals", new Func<IDictionary<int, string>>(() =>
-                GetVisibleServerTerminalMap()));
+            Exports.Add("GetAllCurrentTerminals", new Func<IDictionary<int, string>>(() => GetVisibleServerTerminalMap()));
             Exports.Add("GetFullInfoBySteam", new Func<string, IDictionary<string, string>>(GetFullInfoBySteam));
             Exports.Add("GetAllFullInfo", new Func<IDictionary<string, IDictionary<string, string>>>(GetAllFullInfo));
-
             EventHandlers["onResourceStart"] += new Action<string>(OnResourceStart);
             EventHandlers["playerJoining"] += new Action<Player>(OnPlayerJoining);
             EventHandlers["playerDropped"] += new Action<Player, string>(OnPlayerDropped);
+            EventHandlers["code6_selfmanage:identitiesUpdated"] += new Action(() => { _ = RebuildAndBroadcast(); });
             EventHandlers["vMenu:RequestNameMap"] += new Action<Player>(OnRequestNameMap);
-
-            API.RegisterCommand("vmenu_refreshnames", new Action<int, List<object>, string>(OnRefreshCommand), false);
-        }
-
-        private static bool IgnoreBadCerts(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
-        {
-            return true;
-        }
-
-        private static string GetEndpoint()
-        {
-            var locale = (GetSettingsString(Setting.vmenu_namesync_locale, "ru") ?? "ru").Trim().ToLowerInvariant();
-            if (locale != "ru" && locale != "us")
+            API.RegisterCommand("vmenu_refreshnames", new Action<int, List<object>, string>((src, args, raw) =>
             {
-                locale = "ru";
-            }
-            return EndpointBase + locale;
+                if (src == 0) _ = RebuildAndBroadcast(); // Re-read local exports; never fetch the feed.
+            }), false);
         }
 
-        private void OnResourceStart(string resName)
+        private void OnResourceStart(string resource)
         {
-            if (API.GetCurrentResourceName() == resName)
-            {
-                _ = RefreshLoop();
-            }
+            if (resource == API.GetCurrentResourceName()) _ = RefreshLoop();
+            else if (resource == "code6_selfmanage") _ = RebuildAndBroadcast();
         }
 
-        private void OnPlayerJoining([FromSource] Player source)
+        private void OnPlayerJoining([FromSource] Player player) { _ = RebuildAndBroadcast(); }
+        private void OnPlayerDropped([FromSource] Player player, string reason)
         {
-            _ = RebuildAndBroadcast();
-        }
-
-        private void OnPlayerDropped([FromSource] Player source, string reason)
-        {
-            if (int.TryParse(source.Handle, out var sid))
+            if (int.TryParse(player.Handle, out var sid))
             {
                 _serverNameMap.Remove(sid);
                 _serverTerminalMap.Remove(sid);
+                _lastKnown.Remove(sid);
+                _sessions.Remove(sid);
             }
-            _ = RebuildAndBroadcast();
+            // The dropped player can still appear in Players during this event.
+            _ = RebuildAfterDrop();
         }
+        private async Task RebuildAfterDrop() { await Delay(0); await RebuildAndBroadcast(); }
 
-        private IDictionary<string, string> GetFullInfoBySteam(string steamHex)
+        private IdentitySnapshot ReadIdentity(Player player)
         {
-            if (string.IsNullOrWhiteSpace(steamHex))
+            var sid = int.Parse(player.Handle);
+            var fingerprint = string.Join("\n", player.Identifiers.Select(id => id.ToLowerInvariant()).OrderBy(id => id));
+            if (!_sessions.TryGetValue(sid, out var oldSession) || oldSession != fingerprint)
             {
-                return null;
+                _lastKnown.Remove(sid);
+                _serverTerminalMap.Remove(sid);
+                _sessions[sid] = fingerprint;
             }
-
-            if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steamHex))
+            try
             {
-                return null;
+                object value = Exports["code6_selfmanage"].GetIdentity(sid);
+                // Cfx Lua exports marshal tables as dynamic dictionaries, not this C# DTO.
+                var identity = JsonConvert.DeserializeObject<IdentitySnapshot>(JsonConvert.SerializeObject(value));
+                if (identity == null || string.IsNullOrWhiteSpace(identity.display_name))
+                    throw new InvalidOperationException("Invalid identity snapshot");
+                _providerWarning = false;
+                if (identity.resolved) _lastKnown[sid] = identity;
+                else if (_lastKnown.TryGetValue(sid, out var known)) return known;
+                return identity;
             }
-
-            if (_remoteBySteam.TryGetValue(steamHex, out var info))
+            catch
             {
-                return new Dictionary<string, string>
+                if (!_providerWarning)
                 {
-                    ["name"] = info?.name ?? "",
-                    ["sublevel"] = info?.sublevel ?? "",
-                    ["tag"] = info?.tag ?? "",
-                    ["current_terminal"] = info?.current_terminal ?? "",
-                    ["panel_version"] = info?.panel_version ?? "",
-                    ["level"] = info?.level.ToString() ?? "0"
-                };
-            }
-
-            return null;
-        }
-
-        private IDictionary<string, IDictionary<string, string>> GetAllFullInfo()
-        {
-            var map = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in _remoteBySteam)
-            {
-                if (HiddenPlayerConfig.IsHiddenSteamIdentifier(kv.Key))
-                {
-                    continue;
+                    Debug.WriteLine("[vMenu:NameSync] GetIdentity unavailable; retaining known identities until provider recovers.");
+                    _providerWarning = true;
                 }
-
-                map[kv.Key] = new Dictionary<string, string>
-                {
-                    ["name"] = kv.Value?.name ?? "",
-                    ["sublevel"] = kv.Value?.sublevel ?? "",
-                    ["tag"] = kv.Value?.tag ?? "",
-                    ["current_terminal"] = kv.Value?.current_terminal ?? "",
-                    ["panel_version"] = kv.Value?.panel_version ?? "",
-                    ["level"] = kv.Value?.level.ToString() ?? "0"
-                };
+                return _lastKnown.TryGetValue(sid, out var known) ? known :
+                    new IdentitySnapshot { plain_name = player.Name, display_name = player.Name };
             }
-            return map;
         }
 
-        private void OnRequestNameMap([FromSource] Player player)
+        private string ReadTerminal(int sid)
         {
             try
             {
-                RebuildLocalMap();
-                player?.TriggerEvent("vMenu:NameMapUpdated", GetVisibleServerNameMap());
-                player?.TriggerEvent("vMenu:PlayerInfoMapUpdated", BuildPlayerInfoMap());
+                var entry = ReadTerminalEntry(sid);
+                if (entry != null)
+                {
+                    if (entry.TryGetValue("current_terminal", out var terminal) && !string.IsNullOrWhiteSpace(terminal?.ToString())) return terminal.ToString().Trim();
+                    if (entry.TryGetValue("panel_version", out var panel)) return panel?.ToString()?.Trim() ?? "";
+                }
             }
-            catch (Exception e)
-            {
-                Debug.WriteLine($"[vMenu:NameSync] send snapshot error: {e.Message}");
-            }
+            catch { if (_serverTerminalMap.TryGetValue(sid, out var previous)) return previous; }
+            return "";
         }
 
-        private void OnRefreshCommand(int src, List<object> args, string raw)
+        private Dictionary<string, object> ReadTerminalEntry(int sid)
         {
-            if (src == 0)
+            object value = Exports["code6_selfmanage"].GetTerminalEntryForSource(sid);
+            return JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(value));
+        }
+
+        internal static string FormatDisplay(IdentitySnapshot identity)
+        {
+            var name = identity.display_name ?? identity.plain_name ?? "";
+            if (!identity.resolved) return name;
+            var markers = new[] { "", "⌃", "⌃⌃⌃", "⌃⌃⌃◡", "▮" };
+            if (identity.boosty_level >= 1 && identity.boosty_level <= 4) name += " " + markers[identity.boosty_level];
+            return name + " | " + Math.Floor(identity.rating + 0.5).ToString("#,0", CultureInfo.InvariantCulture);
+        }
+
+        public static string GetPlayerDisplayName(Player player)
+        {
+            // Server-only notifications may address hidden players; public snapshots still filter them.
+            return player == null ? "Player" : Current == null ? player.Name : FormatDisplay(Current.ReadIdentity(player));
+        }
+
+        private string GetDisplayName(int sid)
+        {
+            var player = FindPlayer(sid);
+            return player == null || IsHidden(player) ? null : GetPlayerDisplayName(player);
+        }
+        private Player FindPlayer(int sid) => Players.FirstOrDefault(p => p.Handle == sid.ToString());
+        private Player FindSteamPlayer(string steam) => string.IsNullOrWhiteSpace(steam) ? null :
+            Players.FirstOrDefault(p => p.Identifiers.Any(id => string.Equals(id, steam, StringComparison.OrdinalIgnoreCase)));
+        private static bool IsHidden(Player player) => player.Identifiers.Any(HiddenPlayerConfig.IsHiddenSteamIdentifier);
+        private string GetDisplayNameBySteam(string steam)
+        {
+            var player = FindSteamPlayer(steam);
+            return player == null || IsHidden(player) ? null : GetPlayerDisplayName(player);
+        }
+
+        // Legacy exports now describe connected players only; no independent offline feed dictionary.
+        private IDictionary<string, string> GetFullInfoBySteam(string steam)
+        {
+            var player = FindSteamPlayer(steam);
+            if (player == null || IsHidden(player)) return null;
+            var identity = ReadIdentity(player);
+            Dictionary<string, object> entry = null;
+            try { entry = ReadTerminalEntry(int.Parse(player.Handle)); } catch { }
+            string Metadata(string key, string fallback = "") => entry != null && entry.TryGetValue(key, out var value) ? value?.ToString() ?? fallback : fallback;
+            return new Dictionary<string, string>
             {
-                _ = ForceRefresh();
-                Debug.WriteLine("[vMenu:NameSync] Forced names refresh");
-            }
+                ["name"] = FormatDisplay(identity), ["plain_name"] = identity.plain_name ?? "",
+                ["display_name"] = identity.display_name ?? "", ["tag"] = identity.tag ?? "",
+                ["rating"] = identity.rating.ToString(CultureInfo.InvariantCulture),
+                ["boosty_level"] = identity.boosty_level.ToString(), ["level"] = Metadata("level", "0"),
+                ["sublevel"] = Metadata("sublevel"), ["resolved"] = identity.resolved.ToString(),
+                ["updated_at"] = identity.updated_at.ToString(CultureInfo.InvariantCulture),
+                ["current_terminal"] = ReadTerminal(int.Parse(player.Handle)), ["panel_version"] = Metadata("panel_version")
+            };
+        }
+        private IDictionary<string, IDictionary<string, string>> GetAllFullInfo()
+        {
+            var result = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var player in Players.Where(p => !IsHidden(p)))
+                foreach (var id in player.Identifiers.Where(id => id.StartsWith("steam:", StringComparison.OrdinalIgnoreCase)))
+                    result[id] = GetFullInfoBySteam(id);
+            return result;
+        }
+
+        public static string GetCurrentTerminalForServerId(int sid) => Current?.GetCurrentTerminal(sid);
+        private string GetCurrentTerminal(int sid)
+        {
+            var player = FindPlayer(sid);
+            return player == null || IsHidden(player) ? null : ReadTerminal(sid);
         }
 
         private async Task RefreshLoop()
         {
-            await PullRemote();
-            await RebuildAndBroadcast();
-
             while (true)
             {
-                await Delay(60_000);
-                await PullRemote();
                 await RebuildAndBroadcast();
+                await Delay(60_000); // Local recovery/terminal refresh; identities update immediately on feed events.
             }
         }
-
-        private async Task ForceRefresh()
+        private void RebuildLocalMap()
         {
-            await PullRemote();
-            await RebuildAndBroadcast();
-        }
-
-        private static async Task<string> HttpGetAsync(string url)
-        {
-            using (var wc = new WebClient())
+            var live = new HashSet<int>();
+            foreach (var player in Players)
             {
-                return await wc.DownloadStringTaskAsync(new Uri(url));
+                if (!int.TryParse(player.Handle, out var sid)) continue;
+                live.Add(sid);
+                if (IsHidden(player)) { _serverNameMap.Remove(sid); _serverTerminalMap.Remove(sid); continue; }
+                _serverNameMap[sid] = GetPlayerDisplayName(player);
+                _serverTerminalMap[sid] = ReadTerminal(sid);
+            }
+            foreach (var sid in _sessions.Keys.Concat(_serverNameMap.Keys).Distinct().Where(id => !live.Contains(id)).ToArray())
+            {
+                _serverNameMap.Remove(sid); _serverTerminalMap.Remove(sid); _lastKnown.Remove(sid); _sessions.Remove(sid);
             }
         }
-
-        private async Task PullRemote()
+        private Dictionary<int, string> VisibleMap(Dictionary<int, string> map)
         {
-            try
+            var hidden = HiddenPlayerConfig.GetHiddenPlayerServerIds(Players);
+            return map.Where(kv => !hidden.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
+        private Dictionary<int, string> GetVisibleServerNameMap() => VisibleMap(_serverNameMap);
+        private Dictionary<int, string> GetVisibleServerTerminalMap() => VisibleMap(_serverTerminalMap);
+        private Dictionary<int, object> BuildPlayerInfoMap()
+        {
+            var map = new Dictionary<int, object>();
+            foreach (var kv in GetVisibleServerNameMap())
             {
-                var json = await HttpGetAsync(GetEndpoint());
-                var payload = JsonConvert.DeserializeObject<RemotePayload>(json);
-
-                if (payload?.identifiers == null || payload.identifiers.Count == 0)
+                var player = FindPlayer(kv.Key);
+                if (player == null) continue;
+                var identity = ReadIdentity(player);
+                map[kv.Key] = new Dictionary<string, object>
                 {
-                    Debug.WriteLine("[vMenu:NameSync] PullRemote returned no identifiers; keeping previous cache.");
-                    return;
-                }
-
-                _remoteBySteam = new Dictionary<string, RemotePlayerInfo>(payload.identifiers, StringComparer.OrdinalIgnoreCase);
-
-                Debug.WriteLine($"[vMenu:NameSync] Pulled {_remoteBySteam.Count} entries from JSON.");
+                    ["name"] = kv.Value, ["plain_name"] = identity.plain_name ?? identity.display_name,
+                    ["display_name"] = identity.display_name, ["rating"] = identity.rating,
+                    ["boosty_level"] = identity.boosty_level, ["tag"] = identity.tag ?? "",
+                    ["resolved"] = identity.resolved, ["updated_at"] = identity.updated_at,
+                    ["current_terminal"] = _serverTerminalMap.TryGetValue(kv.Key, out var terminal) ? terminal : ""
+                };
             }
-            catch (Exception e)
-            {
-                Debug.WriteLine($"[vMenu:NameSync] PullRemote error: {e.Message}");
-            }
+            return map;
         }
-
+        private void OnRequestNameMap([FromSource] Player player)
+        {
+            RebuildLocalMap();
+            player?.TriggerEvent("vMenu:NameMapUpdated", GetVisibleServerNameMap());
+            player?.TriggerEvent("vMenu:PlayerInfoMapUpdated", BuildPlayerInfoMap());
+        }
         private async Task RebuildAndBroadcast()
         {
             try
             {
                 RebuildLocalMap();
-                var nameMap = GetVisibleServerNameMap();
-                var infoMap = BuildPlayerInfoMap();
-
+                var names = GetVisibleServerNameMap();
+                var info = BuildPlayerInfoMap();
                 foreach (var player in Players)
                 {
-                    try
-                    {
-                        player.TriggerEvent("vMenu:NameMapUpdated", nameMap);
-                        player.TriggerEvent("vMenu:PlayerInfoMapUpdated", infoMap);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.WriteLine($"[vMenu:NameSync] broadcast error: {e.Message}");
-                    }
+                    player.TriggerEvent("vMenu:NameMapUpdated", names);
+                    player.TriggerEvent("vMenu:PlayerInfoMapUpdated", info);
                 }
             }
-            catch (Exception e)
-            {
-                Debug.WriteLine($"[vMenu:NameSync] Rebuild error: {e.Message}");
-            }
-
+            catch (Exception e) { Debug.WriteLine($"[vMenu:NameSync] Snapshot update failed: {e.Message}"); }
             await Delay(0);
         }
 
-        private void RebuildLocalMap()
+        internal sealed class IdentitySnapshot
         {
-            _serverNameMap.Clear();
-            _serverTerminalMap.Clear();
-
-            foreach (var player in Players)
-            {
-                if (!int.TryParse(player.Handle, out var sid))
-                {
-                    continue;
-                }
-
-                var steam = GetSteamHexFor(sid);
-                if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steam))
-                {
-                    continue;
-                }
-
-                if (!string.IsNullOrEmpty(steam) &&
-                    _remoteBySteam.TryGetValue(steam, out var info))
-                {
-                    var display = FormatDisplay(info);
-                    var terminal = FormatTerminal(info);
-
-                    _serverNameMap[sid] = !string.IsNullOrWhiteSpace(display) ? display : (player.Name ?? $"Player {sid}");
-                    _serverTerminalMap[sid] = terminal ?? "";
-                }
-                else
-                {
-                    _serverNameMap[sid] = player.Name ?? $"Player {sid}";
-                    _serverTerminalMap[sid] = "";
-                }
-            }
-        }
-
-        private Dictionary<int, PlayerSyncInfo> BuildPlayerInfoMap()
-        {
-            var map = new Dictionary<int, PlayerSyncInfo>();
-            var hiddenServerIds = HiddenPlayerConfig.GetHiddenPlayerServerIds(Players);
-
-            foreach (var kv in _serverNameMap)
-            {
-                if (hiddenServerIds.Contains(kv.Key))
-                {
-                    continue;
-                }
-
-                _serverTerminalMap.TryGetValue(kv.Key, out var terminal);
-                map[kv.Key] = new PlayerSyncInfo
-                {
-                    name = kv.Value ?? "",
-                    current_terminal = terminal ?? ""
-                };
-            }
-
-            return map;
-        }
-
-        private Dictionary<int, string> GetVisibleServerNameMap()
-        {
-            var hiddenServerIds = HiddenPlayerConfig.GetHiddenPlayerServerIds(Players);
-            return _serverNameMap
-                .Where(kv => !hiddenServerIds.Contains(kv.Key))
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
-        }
-
-        private Dictionary<int, string> GetVisibleServerTerminalMap()
-        {
-            var hiddenServerIds = HiddenPlayerConfig.GetHiddenPlayerServerIds(Players);
-            return _serverTerminalMap
-                .Where(kv => !hiddenServerIds.Contains(kv.Key))
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
-        }
-
-        private static string GetSteamHexFor(int serverId)
-        {
-            try
-            {
-                var src = serverId.ToString();
-                var count = API.GetNumPlayerIdentifiers(src);
-                for (int i = 0; i < count; i++)
-                {
-                    var id = API.GetPlayerIdentifier(src, i);
-                    if (!string.IsNullOrEmpty(id) && id.StartsWith("steam:", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return id;
-                    }
-                }
-            }
-            catch
-            {
-            }
-
-            return null;
-        }
-
-        private static string FormatDisplay(RemotePlayerInfo info)
-        {
-            var name = info?.name?.Trim();
-            return string.IsNullOrWhiteSpace(name) ? null : name;
-        }
-
-        private static string FormatTerminal(RemotePlayerInfo info)
-        {
-            var terminal = info?.current_terminal?.Trim();
-            if (string.IsNullOrWhiteSpace(terminal))
-            {
-                terminal = info?.panel_version?.Trim();
-            }
-
-            return string.IsNullOrWhiteSpace(terminal) ? null : terminal;
-        }
-
-        private string GetDisplayName(int serverId)
-        {
-            var steam = GetSteamHexFor(serverId);
-            if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steam))
-            {
-                return null;
-            }
-
-            if (_serverNameMap.TryGetValue(serverId, out var name) && !string.IsNullOrWhiteSpace(name))
-            {
-                return name;
-            }
-
-            var player = Players.FirstOrDefault(p => int.TryParse(p.Handle, out var sid) && sid == serverId);
-            if (player != null)
-            {
-                if (!string.IsNullOrEmpty(steam) &&
-                    _remoteBySteam.TryGetValue(steam, out var info))
-                {
-                    var display = FormatDisplay(info);
-                    if (!string.IsNullOrWhiteSpace(display))
-                    {
-                        return display;
-                    }
-                }
-
-                return player.Name ?? $"Player {serverId}";
-            }
-
-            return $"Player {serverId}";
-        }
-
-        public static string GetCurrentTerminalForServerId(int serverId)
-        {
-            return Current?.GetCurrentTerminal(serverId);
-        }
-
-        private string GetCurrentTerminal(int serverId)
-        {
-            var steam = GetSteamHexFor(serverId);
-            if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steam))
-            {
-                return null;
-            }
-
-            if (_serverTerminalMap.TryGetValue(serverId, out var terminal))
-            {
-                return terminal;
-            }
-
-            if (!string.IsNullOrEmpty(steam) &&
-                _remoteBySteam.TryGetValue(steam, out var info))
-            {
-                return FormatTerminal(info);
-            }
-
-            return null;
-        }
-
-        private string GetDisplayNameBySteam(string steamHex)
-        {
-            if (string.IsNullOrWhiteSpace(steamHex))
-            {
-                return null;
-            }
-
-            if (HiddenPlayerConfig.IsHiddenSteamIdentifier(steamHex))
-            {
-                return null;
-            }
-
-            if (_remoteBySteam.TryGetValue(steamHex, out var info))
-            {
-                return FormatDisplay(info);
-            }
-
-            return null;
-        }
-
-        private sealed class RemotePayload
-        {
-            public Dictionary<string, RemotePlayerInfo> identifiers { get; set; }
-        }
-
-        private sealed class RemotePlayerInfo
-        {
-            public string name { get; set; }
-            public string sublevel { get; set; }
-            public int level { get; set; }
+            public string plain_name { get; set; }
+            public string display_name { get; set; }
+            public double rating { get; set; }
+            public int boosty_level { get; set; }
             public string tag { get; set; }
-            public string current_terminal { get; set; }
-            public string panel_version { get; set; }
-        }
-
-        private sealed class PlayerSyncInfo
-        {
-            public string name { get; set; }
-            public string current_terminal { get; set; }
+            public bool resolved { get; set; }
+            public double updated_at { get; set; }
         }
     }
 }

@@ -2366,50 +2366,10 @@ namespace vMenuClient
 
         private readonly float playerNamesDistance = GetSettingsFloat(Setting.vmenu_player_names_distance) > 10f ? GetSettingsFloat(Setting.vmenu_player_names_distance) : 500f;
 
-        private static string ResolveDecoratedName(Player player)
-        {
-            if (player != null && NameMapClient.NameMap.TryGetValue(player.ServerId, out var decoratedName) && !string.IsNullOrWhiteSpace(decoratedName))
-            {
-                return decoratedName;
-            }
-
-            return player?.Name ?? string.Empty;
-        }
-
         private static string ExtractRosterTag(Player player)
         {
-            var text = ResolveDecoratedName(player);
-            if (string.IsNullOrEmpty(text))
-            {
-                return null;
-            }
-
-            for (int i = 0; i < text.Length; i++)
-            {
-                if (text[i] != '#')
-                {
-                    continue;
-                }
-
-                var j = i + 1;
-                if (j >= text.Length || !char.IsDigit(text[j]))
-                {
-                    continue;
-                }
-
-                var startDigits = j;
-                while (j < text.Length && char.IsDigit(text[j]))
-                {
-                    j++;
-                }
-
-                if (j > startDigits)
-                {
-                    return text.Substring(i, j - i);
-                }
-            }
-
-            return null;
+            if (player == null || !NameMapClient.TagMap.TryGetValue(player.ServerId, out var tag) || string.IsNullOrWhiteSpace(tag)) return null;
+            return tag.StartsWith("#", StringComparison.Ordinal) ? tag : "#" + tag;
         }
 
         public static void refreshCharacterNames()

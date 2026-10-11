@@ -81,7 +81,7 @@ namespace vMenuClient
         public Ped Character => player.Character;
         public bool IsLocal => player == Game.Player;
         public bool IsActive => NetworkIsPlayerActive(player.Handle);
-        public string Name => player.Name;
+        public string Name => NameMapClient.ResolveName(ServerId, player.Name);
         public string CurrentTerminal =>
             NameMapClient.TerminalMap.TryGetValue(ServerId, out var terminal) ? terminal : string.Empty;
     }
@@ -135,7 +135,7 @@ namespace vMenuClient
         public InfinityPlayer(int serverId, string name, string currentTerminal = "")
         {
             ServerId = serverId;
-            Name = name;
+            fallbackName = name;
             CurrentTerminal = currentTerminal ?? string.Empty;
         }
 
@@ -164,7 +164,8 @@ namespace vMenuClient
         public bool IsLocal => ServerId == GetPlayerServerId(PlayerId());
         public bool IsActive => Handle != -1 && NetworkIsPlayerActive(Handle);
 
-        public string Name { get; }
+        private readonly string fallbackName;
+        public string Name => NameMapClient.ResolveName(ServerId, fallbackName);
         public string CurrentTerminal { get; }
     }
 
