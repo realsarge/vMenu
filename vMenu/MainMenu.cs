@@ -692,6 +692,7 @@ namespace vMenuClient
 
         private static string SanitizeMenuHeader(string text)
         {
+            text = vMenuShared.ScaleformText.Clean(text);
             if (string.IsNullOrWhiteSpace(text))
             {
                 return GetSafePlayerName(Game.Player.Name);

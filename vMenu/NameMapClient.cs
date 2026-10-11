@@ -16,7 +16,7 @@ namespace vMenuClient
         public static event Action OnUpdated;
 
         public static string ResolveName(int serverId, string fallback) =>
-            NameMap.TryGetValue(serverId, out var name) && !string.IsNullOrWhiteSpace(name) ? name : fallback;
+            vMenuShared.ScaleformText.Clean(NameMap.TryGetValue(serverId, out var name) && !string.IsNullOrWhiteSpace(name) ? name : fallback);
 
         public NameMapClient()
         {
@@ -41,7 +41,7 @@ namespace vMenuClient
                 {
                     if (int.TryParse(kv.Key, out var sid))
                     {
-                        freshNameMap[sid] = kv.Value?.ToString() ?? string.Empty;
+                        freshNameMap[sid] = vMenuShared.ScaleformText.Clean(kv.Value?.ToString());
                     }
                 }
 
@@ -78,9 +78,9 @@ namespace vMenuClient
                 {
                     if (int.TryParse(kv.Key, out var sid))
                     {
-                        freshNameMap[sid] = kv.Value?.name ?? string.Empty;
+                        freshNameMap[sid] = vMenuShared.ScaleformText.Clean(kv.Value?.name);
                         freshTerminalMap[sid] = kv.Value?.current_terminal ?? string.Empty;
-                        freshHeaderMap[sid] = kv.Value?.plain_name ?? kv.Value?.name ?? string.Empty;
+                        freshHeaderMap[sid] = vMenuShared.ScaleformText.Clean(kv.Value?.plain_name ?? kv.Value?.name);
                         freshTagMap[sid] = kv.Value?.tag ?? string.Empty;
                     }
                 }

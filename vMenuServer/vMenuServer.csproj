@@ -15,6 +15,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\SharedClasses\ConfigManager.cs" Link="ConfigManager.cs" />
+    <Compile Include="..\SharedClasses\ScaleformText.cs" Link="ScaleformText.cs" />
     <Compile Include="..\SharedClasses\PermissionsManager.cs" Link="PermissionsManager.cs" />
   </ItemGroup>
 

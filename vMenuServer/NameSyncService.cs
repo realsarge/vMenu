@@ -118,9 +118,9 @@ namespace vMenuServer
 
         internal static string FormatDisplay(IdentitySnapshot identity)
         {
-            var name = identity.display_name ?? identity.plain_name ?? "";
+            var name = vMenuShared.ScaleformText.Clean(identity.plain_name ?? identity.display_name);
             if (!identity.resolved) return name;
-            var markers = new[] { "", "⌃", "⌃⌃⌃", "⌃⌃⌃◡", "▮" };
+            var markers = new[] { "", "[D]", "[S1]", "[S2]", "[L]" };
             if (identity.boosty_level >= 1 && identity.boosty_level <= 4) name += " " + markers[identity.boosty_level];
             return name + " | " + Math.Floor(identity.rating + 0.5).ToString("#,0", CultureInfo.InvariantCulture);
         }

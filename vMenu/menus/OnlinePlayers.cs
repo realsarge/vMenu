@@ -42,6 +42,7 @@ namespace vMenuClient.menus
 
         private static string SanitizeForMenu(string text)
         {
+            text = vMenuShared.ScaleformText.Clean(text);
             if (string.IsNullOrEmpty(text))
             {
                 return text;

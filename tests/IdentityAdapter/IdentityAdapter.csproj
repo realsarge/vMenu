@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../vMenuServer/NameSyncService.cs" Link="NameSyncService.cs" />
+    <Compile Include="../../SharedClasses/ScaleformText.cs" Link="ScaleformText.cs" />
     <Compile Include="../../vMenuServer/HiddenPlayerConfig.cs" Link="HiddenPlayerConfig.cs" />
     <Compile Include="../../vMenu/NameMapClient.cs" Link="NameMapClient.cs" />
     <Reference Include="Newtonsoft.Json"><HintPath>../../dependencies/shared/Newtonsoft.Json.dll</HintPath></Reference>
